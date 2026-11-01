@@ -66,6 +66,14 @@ paths. This skill re-applies the local layout after every upgrade.
 Do not move `.specify/scripts/`, `.specify/templates/`, or
 `.specify/workflows/`; only the four concerns above change.
 
+**Format contract.** `.specific/constitution.yaml` is the **parsed** form of the
+constitution and MUST parse as YAML (the structured
+`project_name`/`version`/`ratified`/`last_amended`/`principles`/`sections`/
+`governance`/`body` schema in `.specific/workflow.yaml`). It is a mirror of
+`.specify/memory/constitution.md`, but a copy of the Markdown bytes under a
+`.yaml` name is a defect — the file would fail `yaml.safe_load`. See step 2b and
+step 5a.
+
 ## Steps
 
 ### 0. Preflight
@@ -113,8 +121,12 @@ three properties:
   `.specify/memory/constitution.md`.
 - Step 1 loads `.specify/memory/constitution.md` when present, falls back to
   `.specific/constitution.yaml`, and otherwise uses the resolved template.
-- Step 6 writes `.specify/memory/constitution.md`, then parses that document
-  into `.specific/constitution.yaml`.
+- Step 6 writes `.specify/memory/constitution.md`, then serializes the same
+  constitution into `.specific/constitution.yaml` as **valid YAML** (structured
+  `project_name`/`version`/`ratified`/`last_amended`/`principles`/`sections`/
+  `governance`/`body` per the `.specific/workflow.yaml` schema). Copying the
+  rendered Markdown into the `.yaml` path is a defect: the file MUST parse as
+  YAML.
 
 If upstream changed the surrounding wording, preserve its structure and apply
 the same intent. The final constraint line must read:
@@ -185,7 +197,11 @@ Keep the `.specify/templates` base path unchanged.
 
 - `GENERATED_FILES` includes `.specific/extensions.yml`,
   `.specify/memory/constitution.md`, and `.specific/constitution.yaml`.
-- `collect_desired` renders the constitution once and writes it to both paths.
+- `collect_desired` writes the rendered Markdown to
+  `.specify/memory/constitution.md` and serializes the constitution to **YAML**
+  for `.specific/constitution.yaml` (helper `render_constitution_yaml`, schema
+  per `.specific/workflow.yaml`). Never copy the Markdown bytes into the `.yaml`
+  path — the file MUST parse as YAML (`yaml.safe_load`).
 - The extensions render target is `.specific/extensions.yml`.
 
 **5b. Docs and templates.** Replace the same paths in:
@@ -198,7 +214,7 @@ Keep the `.specify/templates` base path unchanged.
 The setup-workflow mapping row must read:
 
 ```text
-| `constitution.*` | `.specify/memory/constitution.md`, then parsed into `.specific/constitution.yaml` |
+| `constitution.*` | `.specify/memory/constitution.md`, then serialized as YAML into `.specific/constitution.yaml` |
 ```
 
 ### 6. Refresh a target (optional)
@@ -229,9 +245,12 @@ The verifier checks:
 - `common.py` and `common.sh` resolve presets/extensions from `.specific/`;
 - `resolve_template.py constitution-template --json` succeeds;
 - `python3 -m py_compile` and `bash -n` pass;
+- `setup_specify.py` serializes `.specific/constitution.yaml` as YAML (contains
+  `render_constitution_yaml`) rather than copying the Markdown;
 - when a target is given, its `.specific/extensions.yml` exists and parses as
-  YAML, its `.install-manifest.json` tracks the new path, and its installed
-  resolvers use `.specific/`.
+  YAML, its `.specific/constitution.yaml` exists and parses as YAML (a verbatim
+  Markdown copy FAILs), its `.install-manifest.json` tracks the new path, and
+  its installed resolvers use `.specific/`.
 
 ### 8. Report
 
@@ -250,6 +269,7 @@ chore(speckit): re-apply .specific layout for speckit <version>
 | `workflow-skills/` missing | Abort; the upstream refresh is incomplete |
 | Mixed release files | Abort; finish the upgrade before patching |
 | Both `.specify/extensions.yml` and `.specific/extensions.yml` exist | Do not overwrite; show both and ask which hooks win |
+| `.specific/constitution.yaml` does not parse as YAML (Markdown copy) | Add/restore `render_constitution_yaml` in `setup_specify.py` and re-check the constitution skill step 6 (step 5a, step 2b) |
 | Upstream rewrote the constitution skill | Apply the intent from step 2b; do not blindly sed the standard path away |
 | Verifier reports a stale path in a new file | Add the path to the patch set and re-run |
 | PyYAML unavailable | Skip YAML parsing checks; report the install hint |

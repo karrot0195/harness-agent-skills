@@ -107,7 +107,20 @@ else
     fail "resolve_template.py constitution-template fails"
 fi
 
-# 7. Target project checks (optional).
+# 7. The setup tooling must serialize .specific/constitution.yaml as YAML. A
+#    verbatim Markdown copy under a .yaml name is the regression to catch.
+SETUP_PY="$SOURCE_ROOT/.agents/skills/setup-workflow/scripts/setup_specify.py"
+if [ -f "$SETUP_PY" ]; then
+    if grep -q 'render_constitution_yaml' "$SETUP_PY"; then
+        pass "setup_specify.py serializes .specific/constitution.yaml as YAML"
+    else
+        fail "setup_specify.py copies Markdown into .specific/constitution.yaml (needs render_constitution_yaml)"
+    fi
+else
+    skip "setup_specify.py not found"
+fi
+
+# 8. Target project checks (optional).
 if [ -n "$TARGET" ]; then
     if [ ! -d "$TARGET" ]; then
         fail "target is not a directory: $TARGET"
@@ -121,6 +134,17 @@ if [ -n "$TARGET" ]; then
             fi
         else
             fail "target .specific/extensions.yml is missing"
+        fi
+
+        CONSTITUTION_FILE="$TARGET/.specific/constitution.yaml"
+        if [ -f "$CONSTITUTION_FILE" ]; then
+            if python3 -c 'import sys, yaml; yaml.safe_load(open(sys.argv[1]))' "$CONSTITUTION_FILE" 2>/dev/null; then
+                pass "target .specific/constitution.yaml exists and parses as YAML"
+            else
+                fail "target .specific/constitution.yaml exists but does not parse as YAML (verbatim Markdown copy?)"
+            fi
+        else
+            fail "target .specific/constitution.yaml is missing"
         fi
 
         MANIFEST="$TARGET/.specify/.install-manifest.json"
