@@ -54,7 +54,7 @@ seeds from a template once and is never rewritten afterward.
   (`init-flow`, `setup-workflow`, `ingest-project`, `create-relative-link`,
   `speckit-upgrade`).
 - `workflow-skills/` — `speckit-*` (specify, plan, tasks, implement, and the
-  rest of the Spec Kit flow) and `spec-explain`. Linked into targets.
+  rest of the Spec Kit flow) and `speckit-explain`. Linked into targets.
 - `common-skills/` — opt-in extras (`commit-flow`, `gen-docs`,
   `server-deploy`). Not linked by `init-flow`.
 

@@ -191,6 +191,28 @@ def render_constitution(cfg: dict, source_root: Path) -> bytes:
     return "\n".join(lines).encode()
 
 
+def render_constitution_yaml(cfg: dict) -> bytes:
+    """Serialize the constitution config as valid YAML for .specific/constitution.yaml.
+
+    This is the parsed/mirror form of .specify/memory/constitution.md and must
+    parse as YAML; it is never a verbatim copy of the rendered Markdown.
+    """
+    con = cfg.get("constitution") or {}
+    if yaml is None:
+        raise RuntimeError("PyYAML is required: python3 -m pip install pyyaml")
+    doc = {
+        "project_name": con.get("project_name") or "TBD",
+        "version": str(con.get("version") or "1.0.0"),
+        "ratified": str(con.get("ratified") or "TBD"),
+        "last_amended": str(con.get("last_amended") or "TBD"),
+        "body": (con.get("body") or "").strip(),
+        "principles": con.get("principles") or [],
+        "sections": con.get("sections") or [],
+        "governance": con.get("governance") or [],
+    }
+    return yaml.safe_dump(doc, sort_keys=False, allow_unicode=True).encode()
+
+
 def render_constitution_template(source_root: Path) -> bytes:
     template = source_root / ".specify/templates/constitution-template.md"
     digest = sha(template.read_bytes()) if template.is_file() else ""
@@ -217,9 +239,8 @@ def collect_desired(target: Path, source_root: Path, cfg: dict) -> dict[str, tup
     desired[".specify/init-options.json"] = (render_init_options(cfg), None)
     desired[".specify/integration.json"] = (render_integration(cfg), None)
     desired[".specific/extensions.yml"] = (render_extensions(cfg, source_root), None)
-    constitution = render_constitution(cfg, source_root)
-    desired[".specify/memory/constitution.md"] = (constitution, None)
-    desired[".specific/constitution.yaml"] = (constitution, None)
+    desired[".specify/memory/constitution.md"] = (render_constitution(cfg, source_root), None)
+    desired[".specific/constitution.yaml"] = (render_constitution_yaml(cfg), None)
     desired[".specify/memory/.constitution-template.json"] = (
         render_constitution_template(source_root), None)
     desired[".specify/workflows/workflow-registry.json"] = (

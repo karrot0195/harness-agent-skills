@@ -1,5 +1,5 @@
 ---
-name: "spec-explain"
+name: "speckit-explain"
 description: "Answer questions about this project by reading README.md, AGENTS.md, specs, and scanning the codebase, with optional web research. Read-only: never modifies files. Use when the user asks to explain, clarify, or investigate how something works in this repo."
 compatibility: "Works in any repo with README.md/AGENTS.md; web research optional"
 metadata:

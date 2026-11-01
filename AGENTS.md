@@ -24,7 +24,7 @@ edits, and never deletes directories.
   setup-workflow/        idempotent .specify + workflow-skill installer
     scripts/             setup_specify.py, link_skills.py
 common-skills/           opt-in skills (commit-flow, gen-docs, server-deploy)
-workflow-skills/         speckit-* and spec-explain
+workflow-skills/         speckit-* and speckit-explain
 template/
   AGENTS.md              linked into the target
   PROJECTS.template.md   rendered into the target
