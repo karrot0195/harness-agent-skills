@@ -1,0 +1,54 @@
+# Seeds TARGET/.specific/workflow.yaml.
+# setup-workflow deep-merges this file over its built-in defaults, then the
+# target's .specific/workflow.yaml over that. Lists replace, maps merge.
+# Every key is optional; empty values mean "use the default / derive it".
+apiVersion: agent-skills/v1
+kind: Workflow
+name: workflow
+
+speckit:
+  enabled: true
+  version: "1.2.2.dev0"
+  integration: command-code
+  script: py                       # py | sh
+  feature_numbering: sequential    # sequential | timestamp
+  allow_symlinks: false
+
+constitution:
+  # Non-empty body wins verbatim; the structured fields below are ignored.
+  body: ""
+  project_name: TBD
+  version: "1.0.0"
+  ratified: TBD
+  last_amended: TBD
+  principles: []
+  # - name: Library-First
+  #   description: Every feature starts as a standalone, testable library.
+  sections: []
+  # - name: Additional Constraints
+  #   content: Technology stack, compliance, deployment rules.
+  governance: []
+  # - Constitution supersedes all other practices.
+
+extensions:
+  # Keys must match what the speckit skills read, e.g. before_plan,
+  # after_implement, before_tasks, after_specify. Values are hook lists.
+  hooks: {}
+  # hooks:
+  #   before_plan:
+  #     - extension: guard
+  #       command: speckit.git.commit
+  #       description: Ensure a clean tree before planning
+  #       optional: true
+  #       enabled: true
+  #       condition: ""
+
+workflows:
+  speckit:
+    enabled: true
+
+skills:
+  link: []                         # empty = every workflow-skills/*/
+
+sync:
+  on_conflict: prompt              # prompt | keep | overwrite

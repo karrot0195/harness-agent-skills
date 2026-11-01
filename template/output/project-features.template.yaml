@@ -1,0 +1,7 @@
+name: features
+features:
+  - name: feature1
+    description: Feature 1
+    sources:
+      - type: file
+        path: /path/to/feature1.txt

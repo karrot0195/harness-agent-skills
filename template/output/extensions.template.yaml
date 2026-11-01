@@ -1,0 +1,25 @@
+# Rendered into TARGET/.specific/extensions.yml by setup-workflow.
+# Only keys with at least one hook are written; empty lists are dropped.
+apiVersion: agent-skills/v1
+kind: Extensions
+hooks:
+  before_specify: []
+  before_plan: []
+  before_tasks: []
+  before_implement: []
+  before_clarify: []
+  before_analyze: []
+  before_checklist: []
+  before_constitution: []
+  before_converge: []
+  before_taskstoissues: []
+  after_specify: []
+  after_plan: []
+  after_tasks: []
+  after_implement: []
+  after_clarify: []
+  after_analyze: []
+  after_checklist: []
+  after_constitution: []
+  after_converge: []
+  after_taskstoissues: []

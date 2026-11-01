@@ -1,0 +1,14 @@
+# Seeds TARGET/.specific/project.yaml.
+# ingest-project merges this over scanned facts; empty values mean
+# "derive from the scan", never "write an empty string".
+apiVersion: agent-skills/v1
+kind: Project
+name: ""
+summary: ""
+architecture:
+  framework: ""
+  language: ""
+  database: ""
+  unit_test_framework: ""
+rules: []
+features_file: .specific/project-features.yaml
