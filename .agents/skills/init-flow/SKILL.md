@@ -42,6 +42,7 @@ Re-running is safe: identical links are skipped, generated files are compared be
    - `template/input/workflow.template.yaml`
    - `template/output/project-features.template.yaml`
    - `template/output/extensions.template.yaml`
+   - `template/LOGS.template.md`
    - `.specify/`
    - `workflow-skills/*/`
 
@@ -65,12 +66,14 @@ If `target_project` resolves to `source_root` or a path inside it, abort and say
 3. **Generate project context.** Activate `ingest-project` with `<target_project>` as its argument. It is read-only on the source tree and writes only:
    - `<target_project>/PROJECTS.md`
    - `<target_project>/.specific/project-features.yaml`
-   - `<target_project>/.specific/project.yaml`
+   - `<target_project>/.specific/project.yaml` (merged: architecture + `skills`, user fields preserved)
+   - `<target_project>/LOGS.md` (seeded from `template/LOGS.template.md` when absent)
 
    Gate before continuing:
    - `PROJECTS.md` exists
    - `grep -q '<<' PROJECTS.md` finds nothing (no unresolved template placeholders)
    - `.specific/project-features.yaml` exists
+   - `.specific/project.yaml` parses as YAML
 
    If `ingest-project` reports `TBD` values, collect them for the final summary — do not invent values.
 

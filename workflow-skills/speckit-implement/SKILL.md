@@ -93,6 +93,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 3. Load and analyze the implementation context:
    - **REQUIRED**: Read tasks.md for the complete task list and execution plan
    - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
+   - **REQUIRED IF PRESENT**: Read `.specific/project.yaml` for the `skills:` verification recipes mapped to each user story
    - **IF EXISTS**: Read data-model.md for entities and relationships
    - **IF EXISTS**: Read contracts/ for API specifications and test requirements
    - **IF EXISTS**: Read research.md for technical decisions and constraints
@@ -171,13 +172,44 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Suggest next steps if implementation cannot proceed
    - **IMPORTANT** For completed tasks, make sure to mark the task off as [X] in the tasks file.
 
-9. Completion validation:
+9. **Verify each user story via its skill** (see "Verify via skill" below):
+   - Before marking a story's tasks done, run the verification skill mapped to that
+     story in tasks.md / `.specific/project.yaml`.
+   - On failure: diagnose and fix, then re-run the skill. Repeat until it passes or
+     you are blocked (halt a non-parallel story and report, as in step 8).
+   - On success: emit a short summary and a suggestion for improving that skill.
+   - After the story passes, append a `LOGS.md` entry via `speckit-log`.
+
+10. Completion validation:
    - Verify all required tasks are completed
    - Check that implemented features match the original specification
+   - Confirm every user story was verified via its mapped skill
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/speckit-tasks` first to regenerate the task list.
+
+## Verify via skill
+
+Each user story in tasks.md carries a verification task that names a skill from
+`.specific/project.yaml` and how to run it. For every story, during implementation:
+
+1. **Run the skill** exactly as the task describes (the recipe's `description:` is a
+   runnable command). Capture the output.
+2. **On error** — diagnose the failure, fix the code or the missing prerequisite, and
+   run the skill again. Do not mark the story complete while its skill fails. If it
+   cannot be made to pass, halt and report with the skill output as evidence.
+3. **On success** — write a one-paragraph summary of what the story now does, then
+   **suggest how to optimise the skill**:
+   - Tighten the recipe's `description:`/command if it was awkward to run, or
+   - Add a more specific recipe when the story revealed a new verifiable output
+     (append it via `ingest-project` so `.specific/project.yaml` stays the source of truth), or
+   - Note the skill is already sufficient.
+4. **Log it** — call `speckit-log` to append a `LOGS.md` entry
+   (`YYYY-MM-DD HH:MM: <story title>` + the one-line summary) for the completed story.
+
+If a story has no usable verification skill, create one first (via `ingest-project`)
+and then verify with it; never skip verification silently.
 
 ## Mandatory Post-Execution Hooks
 
@@ -221,6 +253,8 @@ Report final status with summary of completed work.
 ## Done When
 
 - [ ] All tasks in tasks.md completed and marked `[X]`
+- [ ] Every user story verified via its mapped `.specific/project.yaml` skill (fix-and-rerun on failure)
+- [ ] A `LOGS.md` entry appended per completed story via `speckit-log`
 - [ ] Implementation validated against specification, plan, and test coverage
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
-- [ ] Completion reported to user with summary of completed work
+- [ ] Completion reported to user with summary of completed work and skill-improvement suggestions

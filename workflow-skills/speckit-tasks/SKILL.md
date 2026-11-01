@@ -60,6 +60,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Required**: plan.md (tech stack, libraries, structure), spec.md (user stories with priorities)
    - **Optional**: data-model.md (entities), contracts/ (interface contracts), research.md (decisions), quickstart.md (test scenarios)
    - **IF EXISTS**: Load `.specific/constitution.yaml` for project principles and governance constraints
+   - **IF EXISTS**: Load `.specific/project.yaml` for the architecture and the runnable `skills:` verification recipes (name + literal command)
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
 3. **Execute task generation workflow**:
@@ -68,6 +69,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If data-model.md exists: Extract entities and map to user stories
    - If contracts/ exists: Map interface contracts to user stories
    - If research.md exists: Extract decisions for setup tasks
+   - **Map each user story to a verification skill** (see "Verification skills" below)
    - Generate tasks organized by user story (see Task Generation Rules below)
    - Generate dependency graph showing user story completion order
    - Create parallel execution examples per user story
@@ -78,13 +80,42 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Phase 1: Setup tasks (project initialization)
    - Phase 2: Foundational tasks (blocking prerequisites for all user stories)
    - Phase 3+: One phase per user story (in priority order from spec.md)
-   - Each phase includes: story goal, independent test criteria, tests (if requested), implementation tasks
+   - Each phase includes: story goal, independent test criteria, a Verification task (see below), tests (if requested), implementation tasks
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
+
+## Verification skills
+
+Before generating tasks, read `.specific/project.yaml` and use its `skills:` list of
+runnable verification recipes. For **each user story**, decide:
+
+1. **Which skill** verifies the story's independent-test outcome (e.g. `start env`,
+   `db query`, `migrate`, `verify-api`).
+2. **How** to use it — the exact command and the expected result that proves the
+   story works.
+
+Emit one explicit verification task per user-story phase, placed after that story's
+implementation tasks:
+
+```text
+- [ ] T### [USn] Verify <story outcome> via skill `<name>`: <how to run + expected result>
+```
+
+Rules:
+
+- Reference the skill by its `name:` from `.specific/project.yaml` and inline its
+  command (the `description:`) so the task is runnable without extra context.
+- If **no** existing skill can verify the story, emit a task to **add one first**
+  (via `ingest-project`, which appends the recipe to `.specific/project.yaml`),
+  then the verification task that uses it:
+  `- [ ] T### [USn] Add verification skill for <story> to .specific/project.yaml, then verify <outcome>`
+- Prefer `db query` / `migrate` for data stories and a start/HTTP skill for
+  endpoint stories. Do not invent commands that no evidence in `project.yaml` or
+  the repo supports.
 
 ## Mandatory Post-Execution Hooks
 
@@ -199,17 +230,24 @@ Every task MUST strictly follow this format:
    - Foundational/blocking tasks → Foundational phase (Phase 2)
    - Story-specific setup → within that story's phase
 
+5. **From Verification Skills (`.specific/project.yaml` `skills:`)**:
+   - Each user story gets exactly one verification task at the end of its phase,
+     naming the skill and how to run it (see "Verification skills")
+   - If no existing skill fits, add a task to create one (via `ingest-project`)
+     immediately before the verification task that consumes it
+
 ### Phase Structure
 
 - **Phase 1**: Setup (project initialization)
 - **Phase 2**: Foundational (blocking prerequisites - MUST complete before user stories)
 - **Phase 3+**: User Stories in priority order (P1, P2, P3...)
-  - Within each story: Tests (if requested) → Models → Services → Endpoints → Integration
+  - Within each story: Tests (if requested) → Models → Services → Endpoints → Integration → **Verification (via skill)**
   - Each phase should be a complete, independently testable increment
 - **Final Phase**: Polish & Cross-Cutting Concerns
 
 ## Done When
 
 - [ ] tasks.md generated with all phases, task IDs, and file paths
+- [ ] Every user-story phase has a verification task naming a `.specific/project.yaml` skill and how to run it (or a task to create that skill first)
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with task count, story breakdown, and MVP scope

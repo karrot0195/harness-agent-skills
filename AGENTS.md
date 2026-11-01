@@ -19,15 +19,17 @@ edits, and never deletes directories.
 ```
 .agents/skills/          orchestrator + context skills (used from this repo)
   create-relative-link/  portable relative symlinks
-  ingest-project/        scan target -> PROJECTS.md + .specific/
+  ingest-project/        scan target -> PROJECTS.md + .specific/project.yaml (+ LOGS.md)
+    scripts/             update_project_yaml.py
   init-flow/             one-pass onboarding orchestrator
   setup-workflow/        idempotent .specify + workflow-skill installer
     scripts/             setup_specify.py, link_skills.py
 common-skills/           opt-in skills (commit-flow, gen-docs, server-deploy)
-workflow-skills/         speckit-* and speckit-explain
+workflow-skills/         speckit-* (incl. speckit-review-spec, speckit-log) and speckit-explain
 template/
   AGENTS.md              linked into the target
   PROJECTS.template.md   rendered into the target
+  LOGS.template.md       seeds the target's append-only LOGS.md
   input/                 per-project config seeds (user edits these)
     project.template.yaml
     workflow.template.yaml
@@ -44,7 +46,8 @@ template/
 |---|---|---|
 | `AGENTS.md` | symlink | points at `template/AGENTS.md`; loads `@PROJECTS.md` |
 | `PROJECTS.md` | generated | rendered by `ingest-project`; no `<<...>>` placeholders |
-| `.specific/project.yaml` | user | seeds from `template/input/project.template.yaml`; never rewritten |
+| `LOGS.md` | user (append-only) | seeded by `ingest-project`; appended by `speckit-log` |
+| `.specific/project.yaml` | merge-managed | architecture refreshed from scan, `skills` appended, `name`/`summary`/`rules` preserved |
 | `.specific/project-features.yaml` | user | seeds from `template/output/project-features.template.yaml` |
 | `.specific/workflow.yaml` | user | seeds from `template/input/workflow.template.yaml` |
 | `.specify/` | managed | installed by `setup-workflow`; tracked in `.specify/.install-manifest.json` |
@@ -85,10 +88,12 @@ template/
 
 ### Verification before finishing
 
-- `python3 -m py_compile .agents/skills/setup-workflow/scripts/*.py`
+- `python3 -m py_compile .agents/skills/setup-workflow/scripts/*.py .agents/skills/ingest-project/scripts/*.py`
 - Parse every skill's YAML frontmatter and assert `name == parent dir`.
 - Run `setup_specify.py` and `link_skills.py` against a temporary target and
   confirm a second run reports only `same` / `skip_linked`.
+- Run `update_project_yaml.py` against a temporary `.specific/project.yaml` twice
+  and confirm the second run reports no changes (idempotent).
 - Confirm `PROJECTS.md` has no `<<...>>` placeholders and every linked skill
   resolves under `workflow-skills/`.
 - Delete `__pycache__` afterward.

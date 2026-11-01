@@ -26,8 +26,9 @@ Or run the pieces individually:
 target/
 ├── AGENTS.md                    -> symlink to template/AGENTS.md
 ├── PROJECTS.md                  generated from template/PROJECTS.template.md
+├── LOGS.md                      append-only change log, seeded from template/LOGS.template.md
 ├── .specific/
-│   ├── project.yaml             user-owned overrides for PROJECTS.md
+│   ├── project.yaml             merge-managed overrides + runnable `skills` (see ingest-project)
 │   ├── project-features.yaml    feature inventory
 │   └── workflow.yaml            speckit + flow configuration
 ├── .specify/                    Spec Kit runtime (managed, hash-tracked)
@@ -36,12 +37,13 @@ target/
 
 ## Configuration
 
-All per-project behavior comes from three YAML files in `.specific/`. Each
-seeds from a template once and is never rewritten afterward.
+All per-project behavior comes from three YAML files in `.specific/`. `project-features.yaml`
+and `workflow.yaml` seed from a template once and are never rewritten; `project.yaml` is
+merge-managed (architecture refreshed from the scan, `skills` appended, user fields kept).
 
 | File | Template | Controls |
 |---|---|---|
-| `project.yaml` | `template/input/project.template.yaml` | summary, framework/language/database, rules, features file |
+| `project.yaml` | `template/input/project.template.yaml` | summary, framework/language/database, runnable `skills`, rules, features file |
 | `project-features.yaml` | `template/output/project-features.template.yaml` | feature list with `file` / `dir` / `glob` sources |
 | `workflow.yaml` | `template/input/workflow.template.yaml` | speckit version/integration/script, constitution, extension hooks, workflow toggles, linked skills, conflict policy |
 
@@ -54,7 +56,9 @@ seeds from a template once and is never rewritten afterward.
   (`init-flow`, `setup-workflow`, `ingest-project`, `create-relative-link`,
   `speckit-upgrade`).
 - `workflow-skills/` — `speckit-*` (specify, plan, tasks, implement, and the
-  rest of the Spec Kit flow) and `speckit-explain`. Linked into targets.
+  rest of the Spec Kit flow), plus `speckit-explain`, `speckit-review-spec`
+  (readiness verdict reusing analyze + checklist), and `speckit-log`
+  (append-only `LOGS.md` entries). Linked into targets.
 - `common-skills/` — opt-in extras (`commit-flow`, `gen-docs`,
   `server-deploy`). Not linked by `init-flow`.
 

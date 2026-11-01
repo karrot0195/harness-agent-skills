@@ -10,5 +10,15 @@ architecture:
   language: ""
   database: ""
   unit_test_framework: ""
+# Runnable verification recipes. ingest-project scans the project and appends
+# entries here; user entries are never removed. Each entry is a short name plus
+# the literal command that proves an output works.
+skills: []
+# - name: start env
+#   description: "pnpm start:dev > api.log"
+# - name: db query
+#   description: "podman exec devcontainers_pg_1 psql {ARGS}"
+# - name: migrate
+#   description: "pnpm run knex:latest"
 rules: []
 features_file: .specific/project-features.yaml

@@ -1,14 +1,18 @@
 ---
 name: ingest-project
-description: Generate or refresh a target project's PROJECTS.md from a read-only scan of its code, merged with per-project overrides in .specific/*.yaml. Use when init-flow reaches its "Setup concept project" step, or when the user asks to ingest, onboard, initialize, or re-summarize an existing codebase.
+description: Generate or refresh a target project's PROJECTS.md and .specific/project.yaml (architecture + runnable verification skills) from a read-only scan of its code, merged with per-project overrides. Use when init-flow reaches its "Setup concept project" step, or when the user asks to ingest, onboard, initialize, or re-summarize an existing codebase.
 argument-hint: "<target_project>"
 metadata:
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # ingest-project
 
 Reads an existing project (never modifies its source), derives the facts a coding agent needs, merges project-specific overrides, and writes `PROJECTS.md` at the target project root. `template/AGENTS.md` loads that file, so this is what gives the agent its first real project context.
+
+It also maintains `.specific/project.yaml` (architecture facts + runnable `skills:`
+verification recipes, merge-managed across re-runs) and seeds an append-only
+`LOGS.md` from `template/LOGS.template.md`.
 
 This skill is common to every project. Anything project-specific lives in the target's `.specific/*.yaml`, never in this skill.
 
@@ -35,12 +39,13 @@ This skill is common to every project. Anything project-specific lives in the ta
    - `template/PROJECTS.template.md`
    - `template/input/project.template.yaml`
    - `template/output/project-features.template.yaml`
+   - `template/LOGS.template.md`
 
 ## Override contract — `.specific/*.yaml`
 
-Both files are optional. Read them before scanning; they always win over scanned facts.
+Both files are optional. Read them before scanning. `project-features.yaml` always wins over scanned facts; `project.yaml` is merge-managed per the rules below.
 
-### `.specific/project.yaml` — PROJECTS.md overrides
+### `.specific/project.yaml` — PROJECTS.md overrides + project skills
 
 Schema: `template/input/project.template.yaml`. Seed it from that file when missing.
 
@@ -54,16 +59,29 @@ architecture:
   language: Go
   database: PostgreSQL
   unit_test_framework: Go test
+skills:                          # runnable verification recipes
+  - name: start env
+    description: "pnpm start:dev > api.log"
+  - name: db query
+    description: "podman exec devcontainers_pg_1 psql {ARGS}"
 rules:                           # appended to PROJECTS.md "RULES"
   - Never edit generated files under gen/
   - All handlers go through internal/api
 features_file: .specific/project-features.yaml
 ```
 
-Rules:
-- Empty string, `null`, or a missing key means "derive it from the scan".
-- Never invent a value: if neither yaml nor scan provides it, write `TBD`.
-- Do not populate or rewrite this file after seeding — it is human-curated. Ask before changing it.
+This file is **merge-managed**, not human-only:
+
+- `name` / `summary` — set from the scan only when empty/null; never overwritten once filled.
+- `architecture.*` — refreshed every run from the scan; a blank scanned value keeps the
+  existing entry (never blank a known value, never invent one).
+- `skills` — scanned verification recipes **appended** when their `name` is new
+  (case-insensitive); existing entries, their order, and their descriptions are preserved.
+  Never remove a skill.
+- `rules` — never touched.
+- Any other key is preserved verbatim.
+
+Rule: never invent a value. If neither yaml nor scan provides one, leave it empty.
 
 ### `.specific/project-features.yaml` — feature inventory
 
@@ -98,30 +116,49 @@ features:
    - Structure: top-level dirs, entry points (`main.go`, `src/index.*`, `cmd/*`, `app.py`, `manage.py`)
    - Docs: `README*`, `docs/`, `AGENTS.md`, `CLAUDE.md`
    - Git summary: `git rev-parse --is-inside-work-tree`, `git log --oneline -1`, commit count, earliest commit date
-   - Existing `PROJECTS.md` and `.specific/` contents
+   - Existing `PROJECTS.md`, `.specific/` contents, and `LOGS.md`
+   - **Verification recipes** for the `skills:` list (evidence only, no execution):
+     - `package.json` `scripts` (start / dev / test / lint / migrate / knex / db)
+     - `Makefile` targets; `docker-compose.yml` services (e.g. a `pg`/`postgres` service → `db query`)
+     - Migrate/test tooling: `knex`, `prisma`, `alembic`, `gradle`, `go test`, `pytest`
+     Emit candidates as `{name, description}` where `name` is a short verb phrase
+     (`start env`, `db query`, `migrate`, `verify-api`) and `description` is the
+     literal command, mirroring the examples in `template/input/project.template.yaml`.
    Never run builds, installs, tests, or formatters. Never modify source files.
-4. **Seed `.specific/` when missing.** Create the directory first, then:
+4. **Seed missing files.** Create `.specific/` first, then:
    - `.specific/project-features.yaml` — copy `template/output/project-features.template.yaml`, then fill `features:` from scan evidence (entry points and top-level modules, guided by README headings). If it already exists, leave it untouched unless the user explicitly asks to refresh it.
-   - `.specific/project.yaml` — copy `template/input/project.template.yaml` only when absent. Do not populate values; it is human-curated.
-5. **Merge with precedence:** `.specific/project.yaml` → scanned facts → `TBD`. `rules` from yaml are appended verbatim; if none exist, keep the `RULES` section with a short scan-derived convention list only when it is unambiguous, else leave it empty.
+   - `.specific/project.yaml` — copy `template/input/project.template.yaml` only when absent. Do not populate values by hand; step 5's merge fills them.
+   - `LOGS.md` at the target root — copy `template/LOGS.template.md` only when absent.
+     It is an append-only change log owned by `speckit-log`; never overwrite it.
+5. **Merge `.specific/project.yaml`** by running the helper (plan first, then apply):
+   ```sh
+   python3 "<skill-dir>/scripts/update_project_yaml.py" \
+     --project-yaml "<target_project>/.specific/project.yaml" \
+     --arch-json '<scanned architecture + name + summary>' \
+     --skills-json '<scanned skill candidates>' --apply
+   ```
+   The helper is deterministic and idempotent: it fills `name`/`summary` only when empty,
+   refreshes `architecture.*` from scanned values (blank scans keep the existing entry),
+   appends `skills` whose `name` is new (case-insensitive), and never touches `rules` or
+   any other key. Do not hand-edit the file; report the `changes:` lines it prints.
 6. **Render `PROJECTS.md`** from `template/PROJECTS.template.md`, substituting every `<<PLACEHOLDER>>`:
    - `<<PROJECT SUMMARY>>` → one paragraph, no marketing language
    - `<<FRAMEWORK>>`, `<<LANGUAGE>>`, `<<DATABASE>>`, `<<UNIT TEST FRAMEWORK>>` → resolved values
-   - Keep `### PROJECT FEATURES` pointing at `@.specific/project-features.yaml`; if the yaml's `features_file` differs, point at that path instead.
+   - Keep `### PROJECT FEATURES` pointing at `@.specific/project-features.yaml`; if the yaml's `features_file` differs, point at that path instead. Keep `### VERIFICATION SKILLS` pointing at `@.specific/project.yaml`.
    Do not add sections the template doesn't have.
 7. **Write `PROJECTS.md` idempotently:**
    - Missing → write it.
    - Exists and rendered content is byte-identical → skip and say so.
    - Exists and differs → show a unified diff and ask once: "Overwrite PROJECTS.md? (Y/n)". Default `Y`. On `N`, leave the existing file untouched and report what changed.
 8. **Verify** — re-read the written `PROJECTS.md` and confirm no `<<...>>` placeholders remain.
-9. **Report** the paths written, facts that fell back to `TBD`, and any files the user should curate (`.specific/project.yaml`, feature descriptions).
+9. **Report** the paths written, the `update_project_yaml.py` change list, facts that fell back to `TBD`, and any files the user should curate (`.specific/project.yaml`, feature descriptions, the `skills:` recipes).
 
 ## Rules
 
-- Read-only on the target's source tree. The only writes are `PROJECTS.md` and `.specific/*.yaml`.
-- Never delete or rewrite a human-curated `.specific/project.yaml`.
+- Read-only on the target's source tree. The only writes are `PROJECTS.md`, `.specific/*.yaml`, and a seeded `LOGS.md` (never overwritten).
+- Never remove or rewrite a user entry in `.specific/project.yaml`: only fill empty `name`/`summary`, refresh `architecture.*`, and append new `skills`.
 - Never fabricate architecture facts. `TBD` is the correct answer when evidence is missing.
-- Prefer few accurate features over many guessed ones.
+- Prefer few accurate features and skills over many guessed ones.
 - No commits, no dependency installs, no build or test runs.
 - `PROJECTS.md` is generated, not symlinked — regenerate it instead of pointing at `template/PROJECTS.template.md`.
 
@@ -131,15 +168,21 @@ features:
 |---|---|
 | `target_project` missing or not a directory | Abort with a clear message; do not create anything |
 | Templates not found under `source_root` | Abort; tell the user the skills repo path could not be resolved |
-| `.specific/*.yaml` unparseable | Report file + error, ignore that file, continue with scan facts |
+| `.specific/*.yaml` unparseable | Report file + error, ignore that file, continue with scan facts; do not let the merge clobber it |
+| `update_project_yaml.py` fails | Report stderr; keep the existing `project.yaml` untouched and continue with the rest |
+| PyYAML unavailable | Report the install hint `python3 -m pip install pyyaml`; skip the `project.yaml` merge |
 | Project has no manifest/README | Still write `PROJECTS.md` with `TBD` values and whatever structure was found |
 | `PROJECTS.md` already exists | Diff + one confirmation (default Y), never a silent clobber |
+| `LOGS.md` already exists | Leave untouched (append-only) |
 | Scan finds no test framework | Write `TBD`, do not guess |
 | `git` unavailable or not a repo | Skip the git summary; continue |
 
 ## References
 
 - `template/PROJECTS.template.md` — the render source
+- `template/input/project.template.yaml` — the `project.yaml` schema, now including `skills`
 - `template/output/project-features.template.yaml` — the feature schema
-- `template/AGENTS.md` — loads `@PROJECTS.md`
+- `template/LOGS.template.md` — seeds the target's append-only `LOGS.md`
+- `scripts/update_project_yaml.py` — the deterministic `project.yaml` merge
+- `template/AGENTS.md` — loads `@PROJECTS.md` and `@LOGS.md`
 - `create-relative-link` — links `AGENTS.md` and workflow skills into the target
