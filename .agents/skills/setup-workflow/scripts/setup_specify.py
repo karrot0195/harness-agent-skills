@@ -6,6 +6,11 @@ Safe re-runs: every installed/generated file is recorded in
 file is updated only when its current hash still matches the recorded one.
 Anything the user edited is a conflict and is never silently overwritten.
 
+Linked mode: when <target>/.specify is a symlink (shared runtime created by
+create-relative-link), the .specify install is skipped entirely — only the
+.specific/* renders are planned/applied and no manifest is written, so the
+shared runtime is never modified.
+
 Usage:
   setup_specify.py --target DIR --source-root DIR [--apply] [--json]
                    [--on-conflict prompt|keep|overwrite] [--verbose]
@@ -308,6 +313,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: source .specify/ not found under {source_root}", file=sys.stderr)
         return 2
 
+    linked = (target / ".specify").is_symlink()
+
     try:
         cfg = load_config(target, source_root)
         desired = collect_desired(target, source_root, cfg)
@@ -315,8 +322,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    if linked:
+        desired = {rel: item for rel, item in desired.items()
+                   if rel.startswith(".specific/")}
+
     on_conflict = args.on_conflict or ((cfg.get("sync") or {}).get("on_conflict") or "prompt")
-    manifest = load_manifest(target)
+    manifest = {} if linked else load_manifest(target)
     results = []
     for rel in sorted(desired):
         data, mode = desired[rel]
@@ -351,23 +362,27 @@ def main(argv: list[str] | None = None) -> int:
                 new_manifest[rel] = {"sha256": sha(dest.read_bytes()), "pinned": True}
             elif status == "pinned":
                 new_manifest[rel] = manifest[rel]
-        atomic_write(
-            target / MANIFEST_REL,
-            (json.dumps({"schema_version": 1, "generator": "setup-workflow",
-                         "files": new_manifest}, indent=2, sort_keys=True) + "\n").encode(),
-            0o644,
-        )
+        if not linked:
+            atomic_write(
+                target / MANIFEST_REL,
+                (json.dumps({"schema_version": 1, "generator": "setup-workflow",
+                             "files": new_manifest}, indent=2, sort_keys=True) + "\n").encode(),
+                0o644,
+            )
 
     summary = {}
     for item in results:
         summary[item["status"]] = summary.get(item["status"], 0) + 1
     if args.json:
         print(json.dumps({"target": str(target), "applied": args.apply,
+                          "linked": linked,
                           "on_conflict": on_conflict,
                           "files": [{k: v for k, v in item.items()
                                      if k not in ("data", "mode")} for item in results],
                           "summary": summary}, indent=2))
     else:
+        if linked:
+            print("LINKED .specify")
         for item in results:
             if item["status"] == "same" and not args.verbose:
                 continue

@@ -1,16 +1,16 @@
 ---
 name: setup-workflow
-description: Install or refresh a GitHub Spec Kit workflow (.specify scripts, templates, constitution, hooks, and workflow skills) in a target project, driven by .specific/workflow.yaml and idempotent across runs. Use when init-flow reaches "Setup Flow Project", when onboarding a repo that needs speckit, or when the user asks to set up, update, or repair the speckit workflow.
+description: Install, refresh, or link the GitHub Spec Kit workflow (.specify runtime, templates, constitution, hooks, and workflow skills) in a target project, driven by .specific/workflow.yaml and idempotent across runs. Use when init-flow reaches "Setup Flow Project", when onboarding a repo that needs speckit, or when the user asks to set up, update, or repair the speckit workflow.
 argument-hint: "<target_project>"
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # setup-workflow
 
 One idempotent pass that makes a project ready for the speckit flow:
 
-- `.specify/` — scripts, templates, workflow definition, generated config
+- `.specify/` — the runtime: linked via `create-relative-link` when shared, otherwise installed by copy from the hash manifest; never written through an existing symlink
 - `.specific/workflow.yaml` — the project's own settings (seeded, never overwritten)
 - `.agents/skills/speckit-*` — relative symlinks to `workflow-skills/*`
 
@@ -98,13 +98,13 @@ Mapping:
 
 ## Steps
 
-1. **Validate.** Resolve `target_project`, `source_root`, `skill_dir`. Confirm `source_root/.specify/` and `source_root/workflow-skills/` exist. Abort with the missing path otherwise.
+1. **Validate.** Resolve `target_project`, `source_root`, `skill_dir`. Confirm `source_root/.specify/` and `source_root/workflow-skills/` exist. Abort with the missing path otherwise. If `<target>/.specify` is already a symlink (created by `create-relative-link`), the runtime is shared: skip the `.specify` install in steps 4–5 (linked mode) and never write through the link.
 
 2. **Seed config.** If `<target>/.specific/workflow.yaml` is missing, create `.specific/` and copy `template/input/workflow.template.yaml` there. Never modify an existing file.
 
 3. **Read `speckit.enabled`.** If false, skip steps 4-6, report that the workflow is disabled, and stop.
 
-4. **Plan the `.specify` install** (no writes):
+   4. **Plan the `.specify` install** (no writes). Linked mode (`.specify` is a symlink): `setup_specify.py` plans/applies only the `.specific/*` renders and reports `LINKED .specify`; `add`/`update`/`conflict` then apply to `.specific/extensions.yml` and `.specific/constitution.yaml` only.
    ```sh
    python3 "$SKILL_DIR/scripts/setup_specify.py" \
      --target "$TARGET" --source-root "$SOURCE_ROOT" --json
@@ -122,7 +122,7 @@ Mapping:
      --target "$TARGET" --source-root "$SOURCE_ROOT" --apply \
      --on-conflict <keep|overwrite>
    ```
-   This copies `scripts/`, `templates/`, `workflows/speckit/`, `.gitignore`, and renders `init-options.json`, `integration.json`, `extensions.yml`, `memory/constitution.md`, `memory/.constitution-template.json`, and `workflows/workflow-registry.json`. Every write is recorded in `.specify/.install-manifest.json`. Files are never deleted.
+   This copies `scripts/`, `templates/`, `workflows/speckit/`, `.gitignore`, and renders `init-options.json`, `integration.json`, `extensions.yml`, `memory/constitution.md`, `memory/.constitution-template.json`, and `workflows/workflow-registry.json` in copy mode; every write is recorded in `.specify/.install-manifest.json`. In linked mode only the `.specific/*` renders are written and no manifest is touched. Files are never deleted.
 
 6. **Link the workflow skills.**
    ```sh
@@ -158,6 +158,7 @@ Mapping:
 | Skill link points elsewhere | `REPLACE` → one batch prompt (default `Y`) |
 | Destination is a real directory | `SKIP_REAL_DIR`, never deleted |
 | `speckit.enabled: false` | Remove `speckit` from the registry; leave files and links untouched |
+| `.specify` is a symlink | Install skipped (`LINKED .specify`); `.specific/*` still rendered |
 
 ## What this skill never does
 
@@ -166,6 +167,7 @@ Mapping:
 - Edit the target's source code, run builds/tests, install dependencies, or commit
 - Rewrite an existing `.specific/workflow.yaml`
 - Copy skills instead of linking them
+- Write through an existing `.specify` symlink (the shared runtime stays untouched)
 - Prune skill links that are no longer listed in `skills.link`
 
 ## Failure-degradation modes

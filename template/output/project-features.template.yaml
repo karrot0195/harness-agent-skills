@@ -1,7 +1,10 @@
 name: features
+summary: ""                      # one-paragraph summary of the feature set
 features:
   - name: feature1
     description: Feature 1
+    summary: ""                  # one-paragraph summary of this feature
+    detail: .specific/features/001-feature1.md   # optional detailed spec (frontmatter: name)
     sources:
       - type: file
         path: /path/to/feature1.txt

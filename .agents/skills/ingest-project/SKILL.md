@@ -36,10 +36,11 @@ This skill is common to every project. Anything project-specific lives in the ta
    git -C "<skill-dir>" rev-parse --show-toplevel
    ```
    If git fails, fall back to the parent of the directory containing this `SKILL.md`'s skill folder. Templates live at:
-   - `template/PROJECTS.template.md`
-   - `template/input/project.template.yaml`
-   - `template/output/project-features.template.yaml`
-   - `template/LOGS.template.md`
+- `template/PROJECTS.template.md`
+    - `template/input/project.template.yaml`
+    - `template/output/project-features.template.yaml`
+    - `template/output/feature.template.md`
+    - `template/LOGS.template.md`
 
 ## Override contract — `.specific/*.yaml`
 
@@ -89,9 +90,12 @@ Follows `template/output/project-features.template.yaml` exactly:
 
 ```yaml
 name: features
+summary: ""                      # one-paragraph summary of the feature set
 features:
   - name: auth
     description: Login, session, and token refresh
+    summary: ""                  # one-paragraph summary of this feature
+    detail: .specific/features/001-auth.md   # optional detailed spec
     sources:
       - type: file
         path: internal/auth
@@ -101,6 +105,10 @@ features:
 
 - `type` is one of `file`, `dir`, `glob`.
 - `path` is relative to the target project root.
+- `detail` (optional) points at a markdown file under `.specific/features/` with
+  YAML frontmatter `name:` and a body holding the feature's deeper spec/notes.
+  Number files `NNN-<slug>.md` (zero-padded, 3 digits) in feature order.
+- `summary` fields are short; the `detail` file holds the long form.
 - Keep it to the strongest ~10 features; this is context, not an inventory dump.
 - `PROJECTS.md` points at this file with `load from @.specific/project-features.yaml`.
 
@@ -126,10 +134,10 @@ features:
      literal command, mirroring the examples in `template/input/project.template.yaml`.
    Never run builds, installs, tests, or formatters. Never modify source files.
 4. **Seed missing files.** Create `.specific/` first, then:
-   - `.specific/project-features.yaml` — copy `template/output/project-features.template.yaml`, then fill `features:` from scan evidence (entry points and top-level modules, guided by README headings). If it already exists, leave it untouched unless the user explicitly asks to refresh it.
-   - `.specific/project.yaml` — copy `template/input/project.template.yaml` only when absent. Do not populate values by hand; step 5's merge fills them.
-   - `LOGS.md` at the target root — copy `template/LOGS.template.md` only when absent.
-     It is an append-only change log owned by `speckit-log`; never overwrite it.
+    - `.specific/project-features.yaml` — copy `template/output/project-features.template.yaml`, then fill `features:` from scan evidence (entry points and top-level modules, guided by README headings). For each feature, set `summary` (short) and, when a deeper spec is warranted, create `.specific/features/NNN-<slug>.md` from `template/output/feature.template.md` and point `detail` at it. If the yaml already exists, leave it untouched unless the user explicitly asks to refresh it.
+    - `.specific/project.yaml` — copy `template/input/project.template.yaml` only when absent. Do not populate values by hand; step 5's merge fills them.
+    - `LOGS.md` at the target root — copy `template/LOGS.template.md` only when absent.
+      It is an append-only change log owned by `speckit-log`; never overwrite it.
 5. **Merge `.specific/project.yaml`** by running the helper (plan first, then apply):
    ```sh
    python3 "<skill-dir>/scripts/update_project_yaml.py" \
@@ -182,6 +190,7 @@ features:
 - `template/PROJECTS.template.md` — the render source
 - `template/input/project.template.yaml` — the `project.yaml` schema, now including `skills`
 - `template/output/project-features.template.yaml` — the feature schema
+- `template/output/feature.template.md` — the per-feature detail spec template
 - `template/LOGS.template.md` — seeds the target's append-only `LOGS.md`
 - `scripts/update_project_yaml.py` — the deterministic `project.yaml` merge
 - `template/AGENTS.md` — loads `@PROJECTS.md` and `@LOGS.md`
