@@ -20,6 +20,21 @@ Or run the pieces individually:
 | `init-flow` | run all of the above in order |
 | `speckit-upgrade` | re-apply the `.specific/` layout after a new upstream speckit release |
 
+## Workflow graph
+
+```mermaid
+flowchart TD
+  A[Target project exists] --> B["/init-flow <target_project>"]
+  B --> C["create-relative-link\nlink template/AGENTS.md -> AGENTS.md"]
+  C --> D["ingest-project\nscan -> PROJECTS.md + .specific/project.yaml + .specific/project-features.yaml + LOGS.md"]
+  D --> E["create-relative-link\nlink .specify/ -> .specify/ (relative)"]
+  E --> F["setup-workflow\nseed .specific/workflow.yaml, render .specific/extensions.yml, link workflow-skills/*"]
+  F --> G["speckit-constitution\npopulate .specific/constitution.yaml"]
+  G --> H[Agent-ready project\nAGENTS.md, PROJECTS.md, .specific/*, .specify, .agents/skills/*]
+``` 
+
+When implementing features/flows, follow the linked `workflow-skills/*` (e.g. `speckit-specify`, `speckit-plan`, `speckit-tasks`, `speckit-implement`) selected/configured via `.specific/workflow.yaml`.
+
 ## What a target project gets
 
 ```text

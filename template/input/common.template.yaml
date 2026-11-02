@@ -1,0 +1,5 @@
+# Common skills configuration (per-project). Seeded by setup-common; never overwritten.
+skills:
+  link: []        # empty = every common-skills/*/
+sync:
+  on_conflict: prompt
