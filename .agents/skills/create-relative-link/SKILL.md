@@ -86,10 +86,10 @@ Inputs:
 - `target_project` = `~/projects/my-project`
 - `target_file` = `AGENTS.md`
 
-With `SOURCE_ROOT` = `/home/kai/Workspaces/espx-apps/esp-webservices/agent-skills` and `target_project` = `/home/kai/projects/my-project`:
+With `SOURCE_ROOT` = `/home/kai/Workspaces/partner-apps/esp-webservices/agent-skills` and `target_project` = `/home/kai/projects/my-project`:
 
-- `REL` = `../../Workspaces/espx-apps/esp-webservices/agent-skills`
-- Link target = `../../Workspaces/espx-apps/esp-webservices/agent-skills/template/AGENTS.md`
-- Command: `ln -s ../../Workspaces/espx-apps/esp-webservices/agent-skills/template/AGENTS.md /home/kai/projects/my-project/AGENTS.md`
+- `REL` = `../../Workspaces/partner-apps/esp-webservices/agent-skills`
+- Link target = `../../Workspaces/partner-apps/esp-webservices/agent-skills/template/AGENTS.md`
+- Command: `ln -s ../../Workspaces/partner-apps/esp-webservices/agent-skills/template/AGENTS.md /home/kai/projects/my-project/AGENTS.md`
 
 Linking a directory works identically: with `file_link` = `.specify` and `target_file` = `.specify`, the command becomes `ln -s <REL>/.specify /home/kai/projects/my-project/.specify`.

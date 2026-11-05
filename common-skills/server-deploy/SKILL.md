@@ -21,7 +21,7 @@ End-to-end flow for provisioning or updating a SimLive server using the assets u
 - Common tools allowed during execution: `ssh`, `scp`, `read_file`, and other standard CLI/file tools for inspection and sync.
 
 - `server_ip`: target server IP or hostname.
-- `ssh_key`: path to SSH private key (default `~/.ssh/espx_vultr`).
+- `ssh_key`: path to SSH private key (default `~/.ssh/partner_vultr`).
 - `ssh_user`: SSH user (default `root`).
 - Persisted target file: `./config/deploy-targets.json` (created by this skill).
 
@@ -32,7 +32,7 @@ Store targets in `./config/deploy-targets.json`:
 ```json
 {
   "targets": [
-    { "name": "prod", "ip": "1.2.3.4", "user": "root", "key": "~/.ssh/espx_vultr", "last_used": "2026-..." }
+    { "name": "prod", "ip": "1.2.3.4", "user": "root", "key": "~/.ssh/partner_vultr", "last_used": "2026-..." }
   ],
   "default": "prod"
 }
@@ -168,6 +168,6 @@ Triggered by the user asking to roll back, or after an unhealthy deploy:
 - Ask before destructive steps (rm, overwrite .env).
 - Capture the git commit hash (`git rev-parse HEAD`) in DEPLOY.md.
 - If `deploy-server.sh` fails due to missing `config/rclone`, create an empty directory and retry.
-- SSH key default is `$HOME/.ssh/espx_vultr` (not `~`, which does not expand from a variable). Override with `SSH_KEY=...`, `SSH_USER=...`, or `PROJECT_PATH=...` env vars.
+- SSH key default is `$HOME/.ssh/partner_vultr` (not `~`, which does not expand from a variable). Override with `SSH_KEY=...`, `SSH_USER=...`, or `PROJECT_PATH=...` env vars.
 - On fresh installs `enable-services.sh` enables units and then delegates to `restart-services.sh`, so the same health check / auto-rollback applies.
 - There is no dedicated `/health` endpoint; keep probes connection-level unless one is added to the API.
