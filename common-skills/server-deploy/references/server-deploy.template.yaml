@@ -1,0 +1,96 @@
+# Seeds <project>/.specific/server-deploy.yaml.
+# Written once by the server-deploy skill's first-deploy survey; never overwritten.
+# Every key is optional unless marked required; omitted values use the defaults
+# shown in the comments below. Keep secrets out of this file (paths only).
+apiVersion: agent-skills/v1
+kind: ServerDeploy
+name: server-deploy
+
+# Target used when --target is omitted and only one target is configured.
+target: prod
+
+targets:
+  - name: prod
+    host: ""                   # required: IP or hostname
+    user: root
+    port: 22
+    key: ~/.ssh/id_ed25519     # "" = ssh-agent / ssh default
+    project_path: ""           # required: remote install dir, e.g. /srv/app
+# Environment overrides win over the file:
+#   DEPLOY_TARGET DEPLOY_HOST DEPLOY_USER DEPLOY_PORT DEPLOY_KEY DEPLOY_PROJECT_PATH
+
+# Optional commands run once from the repo root before any component build/upload.
+# Use {target} as a placeholder for the target name (preprod, prod, ...).
+# Targets can override/extend these with their own `build.steps`.
+build:
+  steps: []
+  # - name: install
+  #   run: pnpm install --frozen-lockfile
+  # - name: container-build
+  #   run: podman build -t app:{target}-latest .
+
+# Optional push phase (after build, before upload): push artifacts to a registry.
+push:
+  steps: []
+  # - name: container-push
+  #   run: podman push registry.example.com/app:{target}-latest
+
+# Optional rollout phase (after restart): remote rollout commands.
+rollout:
+  steps: []
+  # - name: remote-pull-up
+  #   run: ssh user@host "cd /srv/app && podman compose pull && podman compose up -d"
+
+# components may be empty for container/build-only workflows (build.steps handle everything).
+components:
+  # `type` is inferred from the local path (dir/file) unless set explicitly.
+  # `transport` only applies to dirs: scp (default) or tar (tarball + atomic extract).
+  - name: bin
+    build: |                   # string or list; run from the repo root
+      go build -o build/bin/api ./cmd/api
+      go build -o build/bin/worker ./cmd/worker
+    local: build/bin
+    remote: bin
+    type: dir
+    transport: scp
+  - name: client
+    build: pnpm --dir client run build
+    local: client/dist
+    remote: client/dist
+    type: dir
+    transport: tar
+  - name: env
+    local: .config/prod/.env
+    remote: .env
+    type: file
+    merge: env                 # none | env: merge with the remote file, gate on a diff
+
+# Remote bookkeeping, relative to project_path.
+remote:
+  archive_dir: archived        # previous versions live here
+  log_file: LOG-CHANGES.md     # append-only remote change log
+
+services:
+  manager: systemd             # systemd | compose | none
+  units: [app-api, app-worker] # systemd unit names (with or without .service)
+  restart: true
+  # compose_file: docker-compose.yml   # used when manager: compose
+  # runtime: podman                   # docker (default) | podman
+  # pull: true                        # run `compose pull` before `up -d` (containers)
+
+# All checks must pass. An empty list means "deploy succeeded, health unknown".
+healthcheck:
+  timeout_seconds: 15
+  checks:
+    - type: systemd
+      units: [app-api]
+    - type: http
+      url: http://127.0.0.1:8080/
+      accept_status: [200, 301, 302, 404]
+      timeout_seconds: 3
+    # - type: command
+    #   run: systemctl is-active --quiet app-worker
+
+# Local append-only record of deploys/rollbacks. "" disables it.
+record:
+  file: .specific/deploy-history.md

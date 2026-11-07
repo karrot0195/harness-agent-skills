@@ -25,6 +25,9 @@ edits, and never deletes directories.
   setup-workflow/        idempotent workflow installer (.harness copy fallback, skill links)
     scripts/             setup_specify.py, link_skills.py
 common-skills/           opt-in skills (commit-flow, gen-docs, server-deploy)
+  server-deploy/
+    references/          config schema seeds the skill writes into a target
+    scripts/             survey.py, deploy.py, rollback.py, deploy_lib.py
 workflow-skills/         speckit-* (incl. speckit-review-spec, speckit-log) and speckit-explain
 template/
   AGENTS.md              linked into the target

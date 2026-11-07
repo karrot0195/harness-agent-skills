@@ -3,3 +3,4 @@ __pycache__/
 bin/
 npm-cache-local/
 .commandcode/
+.specify/

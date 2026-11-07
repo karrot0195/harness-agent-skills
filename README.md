@@ -45,22 +45,26 @@ target/
 ├── .specific/
 │   ├── project.yaml             merge-managed overrides + runnable `skills` (see ingest-project)
 │   ├── project-features.yaml    feature inventory
-│   └── workflow.yaml            speckit + flow configuration
+│   ├── workflow.yaml            speckit + flow configuration
+│   └── server-deploy.yaml       optional: deploy config (server-deploy skill)
 ├── .harness/                    Spec Kit runtime (managed, hash-tracked)
 └── .agents/skills/*             relative symlinks to workflow-skills/*
 ```
 
 ## Configuration
 
-All per-project behavior comes from three YAML files in `.specific/`. `project-features.yaml`
+All per-project behavior comes from three core YAML files in `.specific/`. `project-features.yaml`
 and `workflow.yaml` seed from a template once and are never rewritten; `project.yaml` is
 merge-managed (architecture refreshed from the scan, `skills` appended, user fields kept).
+Opt-in common skills add their own config; `server-deploy` creates
+`.specific/server-deploy.yaml` from a first-deploy survey and never overwrites it.
 
 | File | Template | Controls |
 |---|---|---|
 | `project.yaml` | `template/input/project.template.yaml` | summary, framework/language/database, runnable `skills`, rules, features file |
 | `project-features.yaml` | `template/output/project-features.template.yaml` | feature list with `file` / `dir` / `glob` sources |
 | `workflow.yaml` | `template/input/workflow.template.yaml` | speckit version/integration/script, constitution, extension hooks, workflow toggles, linked skills, conflict policy |
+| `server-deploy.yaml` | `common-skills/server-deploy/references/server-deploy.template.yaml` | deploy targets, build/upload components, service manager, health checks, remote archive/log, local record |
 
 `template/output/extensions.template.yaml` is the render base for
 `.specific/extensions.yml`.
@@ -75,7 +79,8 @@ merge-managed (architecture refreshed from the scan, `skills` appended, user fie
   (readiness verdict reusing analyze + checklist), and `speckit-log`
   (append-only `LOGS.md` entries). Linked into targets.
 - `common-skills/` — opt-in extras (`commit-flow`, `gen-docs`,
-  `server-deploy`). Not linked by `init-flow`.
+  `server-deploy`). `server-deploy` is config-driven: its first run surveys the
+  project and host read-only and writes `.specific/server-deploy.yaml`.
 
 ## Idempotent by design
 
