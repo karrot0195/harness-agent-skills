@@ -55,7 +55,7 @@ if TASKS_TEMPLATE_CONTENT=$(resolve_template_content "tasks-template" "$REPO_ROO
     TASKS_TEMPLATE_CONTENT="${TASKS_TEMPLATE_CONTENT%x}"
 else
     echo "ERROR: Could not resolve required tasks-template from the template override stack for $REPO_ROOT" >&2
-    echo "Template 'tasks-template' was not found in any supported location (overrides, presets, extensions, or shared core). Add an override at .specify/templates/overrides/tasks-template.md, or run 'specify init' / reinstall shared infra to restore the core .specify/templates/tasks-template.md template." >&2
+    echo "Template 'tasks-template' was not found in any supported location (overrides, presets, extensions, or shared core). Add an override at .harness/templates/overrides/tasks-template.md, or run 'specify init' / reinstall shared infra to restore the core .harness/templates/tasks-template.md template." >&2
     exit 1
 fi
 

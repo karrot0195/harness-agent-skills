@@ -8,7 +8,7 @@ A one-pass `/init-flow <target_project>` gives a target project:
 - an `AGENTS.md` symlink to this repo's `template/AGENTS.md`
 - a generated `PROJECTS.md` (project summary, architecture, rules, features)
 - `.specific/*.yaml` for per-project overrides
-- `.specify/` (GitHub Spec Kit runtime, symlinked) plus linked speckit skills
+- `.harness/` (GitHub Spec Kit runtime, symlinked) plus linked speckit skills
 - relative symlinks under `.agents/skills/` to `workflow-skills/*`
 
 Everything is idempotent: re-running refreshes managed files, preserves local
@@ -22,7 +22,7 @@ edits, and never deletes directories.
   ingest-project/        scan target -> PROJECTS.md + .specific/project.yaml (+ LOGS.md)
     scripts/             update_project_yaml.py
   init-flow/             one-pass onboarding orchestrator
-  setup-workflow/        idempotent workflow installer (.specify copy fallback, skill links)
+  setup-workflow/        idempotent workflow installer (.harness copy fallback, skill links)
     scripts/             setup_specify.py, link_skills.py
 common-skills/           opt-in skills (commit-flow, gen-docs, server-deploy)
 workflow-skills/         speckit-* (incl. speckit-review-spec, speckit-log) and speckit-explain
@@ -36,7 +36,7 @@ template/
   output/                artifacts the skills generate (seeded or rendered)
     project-features.template.yaml
     extensions.template.yaml
-.specify/                canonical Spec Kit runtime symlinked into targets (copy fallback)
+.harness/                canonical Spec Kit runtime symlinked into targets (copy fallback)
 .commandcode/taste/      learned preferences (managed automatically)
 ```
 
@@ -50,7 +50,7 @@ template/
 | `.specific/project.yaml` | merge-managed | architecture refreshed from scan, `skills` appended, `name`/`summary`/`rules` preserved |
 | `.specific/project-features.yaml` | user | seeds from `template/output/project-features.template.yaml` |
 | `.specific/workflow.yaml` | user | seeds from `template/input/workflow.template.yaml` |
-| `.specify/` | symlink | relative link to this repo's `.specify/` via `create-relative-link`; `setup-workflow` installs by copy only as fallback (manifest-tracked) |
+| `.harness/` | symlink | relative link to this repo's `.harness/` via `create-relative-link`; `setup-workflow` installs by copy only as fallback (manifest-tracked) |
 | `.agents/skills/*` | symlinks | relative links to `workflow-skills/*` |
 
 ## RULES
@@ -79,9 +79,9 @@ template/
 ### Idempotency and safety
 
 - Never delete files or real directories; never replace a directory with a symlink.
-- Managed files are tracked by sha256 in `.specify/.install-manifest.json`:
+- Managed files are tracked by sha256 in `.harness/.install-manifest.json`:
   update only when the on-disk hash still matches the recorded hash. Applies
-  to the copy fallback; a symlinked `.specify` is never written.
+  to the copy fallback; a symlinked `.harness` is never written.
 - Local edits are conflicts: resolve with `prompt | keep | overwrite`
   (default `prompt` in config, `keep` when answering interactively). `keep` pins.
 - Symlinks must be relative, computed from the link's parent directory.

@@ -94,7 +94,7 @@ sync:
 - Rewrite an existing `.specific/common.yaml`
 - Copy skills instead of linking them
 - Auto-link skills not listed/configured (empty list = all by design, explicit list = only those)
-- Touch `.specify/` or workflow configuration
+- Touch `.harness/` or workflow configuration
 
 ## Failure-degradation modes
 

@@ -4,7 +4,7 @@
 # Usage: verify_customizations.sh [target_project]
 #
 # The source repository (this skill's git root) is always checked. When a
-# target project is given, its installed .specify/ copy and .specific/ config
+# target project is given, its installed .harness/ copy and .specific/ config
 # are checked too. Exit 0 when every check passes, 1 otherwise.
 
 set -u
@@ -45,8 +45,8 @@ check_resolver() {
         fail "resolver missing: $resolver"
         return
     fi
-    if grep -q '\.specify/presets' "$resolver" || grep -q '\.specify/extensions' "$resolver"; then
-        fail "resolver still uses .specify layers: $label"
+    if grep -q '\.harness/presets' "$resolver" || grep -q '\.harness/extensions' "$resolver"; then
+        fail "resolver still uses .harness layers: $label"
     elif grep -q '\.specific/presets' "$resolver" && grep -q '\.specific/extensions' "$resolver"; then
         pass "resolver uses .specific layers: $label"
     else
@@ -55,16 +55,16 @@ check_resolver() {
 }
 
 # 1. Skills must not read the upstream extension or preset paths.
-check_absent "workflow-skills: no .specify/extensions.yml" \
-    '\.specify/extensions\.yml' "$SOURCE_ROOT/workflow-skills"
-check_absent "workflow-skills: no .specify/presets" \
-    '\.specify/presets' "$SOURCE_ROOT/workflow-skills"
-check_absent "workflow-skills: no .specify/extensions/" \
-    '\.specify/extensions/' "$SOURCE_ROOT/workflow-skills"
+check_absent "workflow-skills: no .harness/extensions.yml" \
+    '\.harness/extensions\.yml' "$SOURCE_ROOT/workflow-skills"
+check_absent "workflow-skills: no .harness/presets" \
+    '\.harness/presets' "$SOURCE_ROOT/workflow-skills"
+check_absent "workflow-skills: no .harness/extensions/" \
+    '\.harness/extensions/' "$SOURCE_ROOT/workflow-skills"
 
 # 2. Reader skills must use .specific/constitution.yaml; the constitution
-#    skill legitimately keeps the standard .specify/memory/constitution.md.
-hits="$(grep -rn --include='*.md' '\.specify/memory/constitution\.md' \
+#    skill legitimately keeps the standard .harness/memory/constitution.md.
+hits="$(grep -rn --include='*.md' '\.harness/memory/constitution\.md' \
     "$SOURCE_ROOT/workflow-skills" 2>/dev/null | grep -v '/speckit-constitution/' || true)"
 if [ -n "$hits" ]; then
     fail "workflow-skills: reader skills use .specific/constitution.yaml"
@@ -76,7 +76,7 @@ fi
 # 3. The constitution skill must keep the standard write and add the mirror.
 CONSTITUTION_SKILL="$SOURCE_ROOT/workflow-skills/speckit-constitution/SKILL.md"
 if [ -f "$CONSTITUTION_SKILL" ] \
-    && grep -q '\.specify/memory/constitution\.md' "$CONSTITUTION_SKILL" \
+    && grep -q '\.harness/memory/constitution\.md' "$CONSTITUTION_SKILL" \
     && grep -q '\.specific/constitution\.yaml' "$CONSTITUTION_SKILL"; then
     pass "speckit-constitution: standard write plus .specific mirror"
 else
@@ -84,23 +84,23 @@ else
 fi
 
 # 4. Resolvers must read presets/extensions from .specific/.
-check_resolver "$SOURCE_ROOT/.specify/scripts/python/common.py"
-check_resolver "$SOURCE_ROOT/.specify/scripts/bash/common.sh"
+check_resolver "$SOURCE_ROOT/.harness/scripts/python/common.py"
+check_resolver "$SOURCE_ROOT/.harness/scripts/bash/common.sh"
 
 # 5. Syntax checks.
-if python3 -m py_compile "$SOURCE_ROOT/.specify/scripts/python/common.py" 2>/dev/null; then
+if python3 -m py_compile "$SOURCE_ROOT/.harness/scripts/python/common.py" 2>/dev/null; then
     pass "common.py compiles"
 else
     fail "common.py does not compile"
 fi
-if bash -n "$SOURCE_ROOT/.specify/scripts/bash/common.sh" 2>/dev/null; then
+if bash -n "$SOURCE_ROOT/.harness/scripts/bash/common.sh" 2>/dev/null; then
     pass "common.sh parses"
 else
     fail "common.sh does not parse"
 fi
 
 # 6. Template resolution must still succeed.
-if python3 "$SOURCE_ROOT/.specify/scripts/python/resolve_template.py" \
+if python3 "$SOURCE_ROOT/.harness/scripts/python/resolve_template.py" \
     constitution-template --json >/dev/null 2>&1; then
     pass "resolve_template.py constitution-template succeeds"
 else
@@ -147,7 +147,7 @@ if [ -n "$TARGET" ]; then
             fail "target .specific/constitution.yaml is missing"
         fi
 
-        MANIFEST="$TARGET/.specify/.install-manifest.json"
+        MANIFEST="$TARGET/.harness/.install-manifest.json"
         if [ -f "$MANIFEST" ]; then
             if python3 -c 'import json, sys; json.load(open(sys.argv[1]))' "$MANIFEST" 2>/dev/null; then
                 if grep -q '"\.specific/extensions\.yml"' "$MANIFEST"; then
@@ -162,8 +162,8 @@ if [ -n "$TARGET" ]; then
             skip "target .install-manifest.json absent"
         fi
 
-        check_resolver "$TARGET/.specify/scripts/python/common.py"
-        check_resolver "$TARGET/.specify/scripts/bash/common.sh"
+        check_resolver "$TARGET/.harness/scripts/python/common.py"
+        check_resolver "$TARGET/.harness/scripts/bash/common.sh"
     fi
 fi
 

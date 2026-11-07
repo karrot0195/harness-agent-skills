@@ -1,6 +1,6 @@
 ---
 name: create-relative-link
-description: Create a portable relative symlink from a target project to a file or directory in this repository (e.g. template/AGENTS.md, .specify). Use when the user asks to link, symlink, or mirror a repo file into another project directory.
+description: Create a portable relative symlink from a target project to a file or directory in this repository (e.g. template/AGENTS.md, .harness). Use when the user asks to link, symlink, or mirror a repo file into another project directory.
 argument-hint: "<file_link> <target_project> <target_file>"
 metadata:
   version: "1.1.0"
@@ -14,7 +14,7 @@ Create a relative symlink so the link keeps working when the whole workspace is 
 
 Positional, all required:
 
-1. `file_link` — path to the source file or directory relative to this repository root (e.g. `./template/AGENTS.md`, `.specify`).
+1. `file_link` — path to the source file or directory relative to this repository root (e.g. `./template/AGENTS.md`, `.harness`).
 2. `target_project` — destination project directory (e.g. `~/projects/my-project` or `../my-project`).
 3. `target_file` — name/path of the link inside the destination (e.g. `AGENTS.md` or `./example/agents.md`).
 
@@ -23,7 +23,7 @@ If any argument is missing, ask the user for it before proceeding.
 ## When to use
 
 - User asks to "create a relative link", "symlink a file into a project", or "link template/AGENTS.md into <project>".
-- User wants a repo file or directory (e.g. `.specify/`) mirrored into another project without copying, so both sides stay in sync.
+- User wants a repo file or directory (e.g. `.harness/`) mirrored into another project without copying, so both sides stay in sync.
 
 ## When NOT to use
 
@@ -92,4 +92,4 @@ With `SOURCE_ROOT` = `/home/kai/Workspaces/partner-apps/esp-webservices/agent-sk
 - Link target = `../../Workspaces/partner-apps/esp-webservices/agent-skills/template/AGENTS.md`
 - Command: `ln -s ../../Workspaces/partner-apps/esp-webservices/agent-skills/template/AGENTS.md /home/kai/projects/my-project/AGENTS.md`
 
-Linking a directory works identically: with `file_link` = `.specify` and `target_file` = `.specify`, the command becomes `ln -s <REL>/.specify /home/kai/projects/my-project/.specify`.
+Linking a directory works identically: with `file_link` = `.harness` and `target_file` = `.harness`, the command becomes `ln -s <REL>/.harness /home/kai/projects/my-project/.harness`.

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Plan or apply an idempotent GitHub Spec Kit (.specify) install for a target project.
+"""Plan or apply an idempotent GitHub Spec Kit (.harness) install for a target project.
 
 Safe re-runs: every installed/generated file is recorded in
-<target>/.specify/.install-manifest.json with its sha256. On the next run a
+<target>/.harness/.install-manifest.json with its sha256. On the next run a
 file is updated only when its current hash still matches the recorded one.
 Anything the user edited is a conflict and is never silently overwritten.
 
-Linked mode: when <target>/.specify is a symlink (shared runtime created by
-create-relative-link), the .specify install is skipped entirely — only the
+Linked mode: when <target>/.harness is a symlink (shared runtime created by
+create-relative-link), the .harness install is skipped entirely — only the
 .specific/* renders are planned/applied and no manifest is written, so the
 shared runtime is never modified.
 
@@ -35,23 +35,23 @@ try:
 except ImportError:  # pragma: no cover
     yaml = None
 
-MANIFEST_REL = ".specify/.install-manifest.json"
+MANIFEST_REL = ".harness/.install-manifest.json"
 
 MANAGED_TREES = (
-    ".specify/scripts",
-    ".specify/templates",
-    ".specify/workflows/speckit",
+    ".harness/scripts",
+    ".harness/templates",
+    ".harness/workflows/speckit",
 )
-MANAGED_FILES = (".specify/.gitignore",)
+MANAGED_FILES = (".harness/.gitignore",)
 
 GENERATED_FILES = (
-    ".specify/init-options.json",
-    ".specify/integration.json",
+    ".harness/init-options.json",
+    ".harness/integration.json",
     ".specific/extensions.yml",
-    ".specify/memory/constitution.md",
+    ".harness/memory/constitution.md",
     ".specific/constitution.yaml",
-    ".specify/memory/.constitution-template.json",
-    ".specify/workflows/workflow-registry.json",
+    ".harness/memory/.constitution-template.json",
+    ".harness/workflows/workflow-registry.json",
 )
 
 
@@ -136,11 +136,11 @@ def render_extensions(cfg: dict, source_root: Path) -> bytes:
 
 
 def render_registry(cfg: dict, source_root: Path, target: Path) -> bytes:
-    workflow_path = source_root / ".specify/workflows/speckit/workflow.yml"
+    workflow_path = source_root / ".harness/workflows/speckit/workflow.yml"
     meta = (read_yaml(workflow_path).get("workflow") or {}) if workflow_path.is_file() else {}
     enabled = bool(((cfg.get("workflows") or {}).get("speckit") or {}).get("enabled", True))
     now = datetime.now(timezone.utc).isoformat()
-    existing_path = target / ".specify/workflows/workflow-registry.json"
+    existing_path = target / ".harness/workflows/workflow-registry.json"
     existing: dict = {}
     if existing_path.is_file():
         try:
@@ -177,7 +177,7 @@ def render_constitution(cfg: dict, source_root: Path) -> bytes:
     sections = con.get("sections") or []
     governance = con.get("governance") or []
     if not (principles or sections or governance):
-        template = source_root / ".specify/templates/constitution-template.md"
+        template = source_root / ".harness/templates/constitution-template.md"
         return template.read_bytes() if template.is_file() else b""
     numerals = ("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
     lines = [f"# {con.get('project_name') or 'TBD'} Constitution", "", "## Core Principles", ""]
@@ -199,7 +199,7 @@ def render_constitution(cfg: dict, source_root: Path) -> bytes:
 def render_constitution_yaml(cfg: dict) -> bytes:
     """Serialize the constitution config as valid YAML for .specific/constitution.yaml.
 
-    This is the parsed/mirror form of .specify/memory/constitution.md and must
+    This is the parsed/mirror form of .harness/memory/constitution.md and must
     parse as YAML; it is never a verbatim copy of the rendered Markdown.
     """
     con = cfg.get("constitution") or {}
@@ -219,7 +219,7 @@ def render_constitution_yaml(cfg: dict) -> bytes:
 
 
 def render_constitution_template(source_root: Path) -> bytes:
-    template = source_root / ".specify/templates/constitution-template.md"
+    template = source_root / ".harness/templates/constitution-template.md"
     digest = sha(template.read_bytes()) if template.is_file() else ""
     return (json.dumps({"sha256": digest, "source": "core"}, indent=2) + "\n").encode()
 
@@ -238,17 +238,17 @@ def collect_desired(target: Path, source_root: Path, cfg: dict) -> dict[str, tup
             if not src.is_file():
                 continue
             rel = src.relative_to(source_root).as_posix()
-            if rel == ".specify/workflows/workflow-registry.json":
+            if rel == ".harness/workflows/workflow-registry.json":
                 continue
             desired[rel] = (src.read_bytes(), src.stat().st_mode & 0o777)
-    desired[".specify/init-options.json"] = (render_init_options(cfg), None)
-    desired[".specify/integration.json"] = (render_integration(cfg), None)
+    desired[".harness/init-options.json"] = (render_init_options(cfg), None)
+    desired[".harness/integration.json"] = (render_integration(cfg), None)
     desired[".specific/extensions.yml"] = (render_extensions(cfg, source_root), None)
-    desired[".specify/memory/constitution.md"] = (render_constitution(cfg, source_root), None)
+    desired[".harness/memory/constitution.md"] = (render_constitution(cfg, source_root), None)
     desired[".specific/constitution.yaml"] = (render_constitution_yaml(cfg), None)
-    desired[".specify/memory/.constitution-template.json"] = (
+    desired[".harness/memory/.constitution-template.json"] = (
         render_constitution_template(source_root), None)
-    desired[".specify/workflows/workflow-registry.json"] = (
+    desired[".harness/workflows/workflow-registry.json"] = (
         render_registry(cfg, source_root, target), None)
     return desired
 
@@ -309,11 +309,11 @@ def main(argv: list[str] | None = None) -> int:
     if not target.is_dir():
         print(f"error: target is not a directory: {target}", file=sys.stderr)
         return 2
-    if not (source_root / ".specify").is_dir():
-        print(f"error: source .specify/ not found under {source_root}", file=sys.stderr)
+    if not (source_root / ".harness").is_dir():
+        print(f"error: source .harness/ not found under {source_root}", file=sys.stderr)
         return 2
 
-    linked = (target / ".specify").is_symlink()
+    linked = (target / ".harness").is_symlink()
 
     try:
         cfg = load_config(target, source_root)
@@ -382,7 +382,7 @@ def main(argv: list[str] | None = None) -> int:
                           "summary": summary}, indent=2))
     else:
         if linked:
-            print("LINKED .specify")
+            print("LINKED .harness")
         for item in results:
             if item["status"] == "same" and not args.verbose:
                 continue

@@ -38,7 +38,7 @@ inputs:
 
 steps:
   - id: specify
-    command: speckit.specify
+    command: speckit.harness
     integration: "{{ inputs.integration }}"
     input:
       args: "{{ inputs.spec }}"

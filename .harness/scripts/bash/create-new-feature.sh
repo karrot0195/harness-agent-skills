@@ -268,7 +268,7 @@ shell_quote() {
     fi
 }
 
-# Resolve repository root using common.sh functions which prioritize .specify
+# Resolve repository root using common.sh functions which prioritize .harness
 SCRIPT_DIR="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/common.sh"
 
@@ -460,7 +460,7 @@ if [ "$DRY_RUN" != true ]; then
         fi
     fi
 
-    # Persist to .specify/feature.json so downstream commands can find the
+    # Persist to .harness/feature.json so downstream commands can find the
     # feature, unless the orchestrator opted out via SPECIFY_FEATURE_NO_PERSIST (#4129).
     if [[ "${SPECIFY_FEATURE_NO_PERSIST:-}" != "1" && "${SPECIFY_FEATURE_NO_PERSIST:-}" != "true" ]]; then
         _persist_feature_json "$REPO_ROOT" "$FEATURE_DIR"

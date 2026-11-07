@@ -16,7 +16,7 @@ Or run the pieces individually:
 |---|---|
 | `create-relative-link` | link a repo file (e.g. `template/AGENTS.md`) into a project |
 | `ingest-project` | scan a project read-only and generate `PROJECTS.md` + `.specific/` |
-| `setup-workflow` | install/refresh `.specify/` and link `workflow-skills/*` |
+| `setup-workflow` | install/refresh `.harness/` and link `workflow-skills/*` |
 | `init-flow` | run all of the above in order |
 | `speckit-upgrade` | re-apply the `.specific/` layout after a new upstream speckit release |
 
@@ -27,10 +27,10 @@ flowchart TD
   A[Target project exists] --> B["/init-flow <target_project>"]
   B --> C["create-relative-link\nlink template/AGENTS.md -> AGENTS.md"]
   C --> D["ingest-project\nscan -> PROJECTS.md + .specific/project.yaml + .specific/project-features.yaml + LOGS.md"]
-  D --> E["create-relative-link\nlink .specify/ -> .specify/ (relative)"]
+  D --> E["create-relative-link\nlink .harness/ -> .harness/ (relative)"]
   E --> F["setup-workflow\nseed .specific/workflow.yaml, render .specific/extensions.yml, link workflow-skills/*"]
   F --> G["speckit-constitution\npopulate .specific/constitution.yaml"]
-  G --> H[Agent-ready project\nAGENTS.md, PROJECTS.md, .specific/*, .specify, .agents/skills/*]
+  G --> H[Agent-ready project\nAGENTS.md, PROJECTS.md, .specific/*, .harness, .agents/skills/*]
 ``` 
 
 When implementing features/flows, follow the linked `workflow-skills/*` (e.g. `speckit-specify`, `speckit-plan`, `speckit-tasks`, `speckit-implement`) selected/configured via `.specific/workflow.yaml`.
@@ -46,7 +46,7 @@ target/
 │   ├── project.yaml             merge-managed overrides + runnable `skills` (see ingest-project)
 │   ├── project-features.yaml    feature inventory
 │   └── workflow.yaml            speckit + flow configuration
-├── .specify/                    Spec Kit runtime (managed, hash-tracked)
+├── .harness/                    Spec Kit runtime (managed, hash-tracked)
 └── .agents/skills/*             relative symlinks to workflow-skills/*
 ```
 
@@ -79,8 +79,8 @@ merge-managed (architecture refreshed from the scan, `skills` appended, user fie
 
 ## Idempotent by design
 
-- Managed `.specify` files are tracked by sha256 in
-  `.specify/.install-manifest.json`; a re-run updates only unmodified files.
+- Managed `.harness` files are tracked by sha256 in
+  `.harness/.install-manifest.json`; a re-run updates only unmodified files.
 - Local edits are conflicts resolved with `prompt`, `keep`, or `overwrite`
   (`keep` pins the file).
 - Skill links are relative; correct links are skipped, real directories are

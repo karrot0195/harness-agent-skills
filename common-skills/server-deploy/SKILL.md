@@ -1,33 +1,51 @@
 ---
 name: "server-deploy"
-description: "Set up, deploy, or update a SimLive server from ./config: collect and persist SSH target, sync config/binaries/client, archive previous versions, run systemd services with health check + auto-rollback, record deployment in ./config/DEPLOY.md and server LOG-CHANGES.md, and support manual rollback."
+description: "Deploy SimLive application artifacts to a server: persist/select an SSH target, ship cmd/{api,engines,planner} binaries and client/dist plus .env/partner.yaml from .config/prod/, archive the previous versions, verify services with auto-rollback, and support manual rollback. Server infrastructure (systemd units, docker-compose, nginx, rclone) is prepared manually on the host and never uploaded."
 metadata:
   author: "simlive"
-  source: "config/"
+  source: ".config/, cmd/, client/"
 ---
 
 # Server Deploy Skill
 
-End-to-end flow for provisioning or updating a SimLive server using the assets under `./config`.
+Deploys the SimLive application to a server that is already set up manually.
+This skill ships code and runtime config only — it never installs or overwrites
+server infrastructure.
 
 ## When to Use
 
-- User asks to set up, deploy, or update a server.
-- User provides a server IP and SSH credentials.
-- User wants to re-sync code/config to an existing server.
+- User asks to deploy, update, or roll back a server.
+- User provides a server IP/host and SSH credentials.
+- User wants to re-sync the application (binaries and/or client) to an existing server.
+
+## What Is Deployed
+
+| Component | Local source | Remote target | Archive / rollback pointer |
+|-----------|--------------|---------------|----------------------------|
+| `bin` | `config/bin/{api,planner,engines}` (built from `cmd/`) | `$PROJECT_PATH/bin/` | `archived/<TS>-bin`, `.rollback_bin` |
+| `client` | `client/dist/` | `$PROJECT_PATH/client/dist/` | `archived/<TS>-client-dist`, `.rollback_client` |
+| `env` | `.config/<env>/.env` (default `prod`) | `$PROJECT_PATH/.env` | `archived/<TS>-env`, `.rollback_env` |
+| `partner` | `.config/<env>/partner.yaml` | `$PROJECT_PATH/partner.yaml` | `archived/<TS>-partner`, `.rollback_partner` |
+
+Never uploaded (manual server-side setup): systemd units, `docker-compose.yml`,
+deploy/restart/rollback scripts, nginx + SSL certs, `rclone.conf`, Go toolchain.
+
+`cmd/partner` is **not** deployed; only `api`, `planner`, `engines`.
 
 ## Inputs
-
-- Common tools allowed during execution: `ssh`, `scp`, `read_file`, and other standard CLI/file tools for inspection and sync.
 
 - `server_ip`: target server IP or hostname.
 - `ssh_key`: path to SSH private key (default `~/.ssh/partner_vultr`).
 - `ssh_user`: SSH user (default `root`).
-- Persisted target file: `./config/deploy-targets.json` (created by this skill).
+- `project_path`: remote install path (default `/root/simlive-go`).
+- `env_name`: `.config/<env>/` to deploy from (default `prod`).
+- Persisted target file: `.config/deploy-targets.json` (created by this skill).
+
+Scripts read `SSH_KEY`, `SSH_USER`, `PROJECT_PATH` from the environment.
 
 ## Persistence
 
-Store targets in `./config/deploy-targets.json`:
+Store targets in `.config/deploy-targets.json`:
 
 ```json
 {
@@ -41,133 +59,141 @@ Store targets in `./config/deploy-targets.json`:
 On each run:
 1. If `deploy-targets.json` exists and has targets, list them and ask the user: reuse an existing target or add a new one.
 2. If new, prompt for IP, user, key; validate SSH connectivity (`ssh ... echo ok`).
-3. Save/update the file and mark the chosen target as default + update `last_used`.
+3. Save/update the file, mark the chosen target as default, and update `last_used`.
 
 ## Flow
 
 ### Step 1 — Select target (GATE)
 
-1. Read `./config/deploy-targets.json` if present.
+1. Read `.config/deploy-targets.json` if present.
 2. Present existing targets; ask reuse vs new.
-3. If no IP is provided and `vultr-cli` is available, run `vultr-cli instance list` and suggest picking one of the listed instances (show label, IP, region, status). Allow manual IP entry as fallback.
+3. If no IP is provided and `vultr-cli` is available, run `vultr-cli instance list` and offer the instances (label, IP, region, status). Manual IP entry is always allowed.
 4. Collect missing fields (IP, user, key); test SSH.
 5. Persist. **GATE**: confirm target before proceeding.
 
-### Step 2 — Assess server state
+### Step 2 — Preflight (read-only)
 
-Check the server against `config/specification-server.md` (tools, services, layout, nginx, docker). Flag any missing prerequisite.
+Check the server, but do not change it:
 
-Run over SSH:
-- `ls $PROJECT_PATH` to detect existing install.
+- `ls -d $PROJECT_PATH $PROJECT_PATH/bin $PROJECT_PATH/client/dist` → fresh vs existing install.
 - `systemctl is-active simlive-api simlive-planner simlive-engines`.
-- Check installed Go version vs `go.mod`.
-- Fetch server `.env` (`cat $PROJECT_PATH/.env`) and diff against local `.env`.
-- Check firewall (`ufw status`) and open `80/tcp`, `443/tcp` when nginx is used.
+- `systemctl cat simlive-api.service` → confirm `WorkingDirectory`, `ExecStart`, and `EnvironmentFile=$PROJECT_PATH/.env` point at `$PROJECT_PATH`.
+- `docker compose ps` in `$PROJECT_PATH` (or `docker ps`) → postgres + redis running.
+- `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/` → API reachable.
+- Disk space (`df -h $PROJECT_PATH`) — binaries and archives add up.
 
-Report: fresh install vs update. Suggest actions based on diff (new binaries, config changes, client build).
+If the install path or the three units are missing, **stop**: report that the host
+needs the manual infrastructure setup first (packages, docker compose, systemd
+units, nginx/SSL, rclone). Do not attempt to create them from this skill.
 
-#### Fresh-server provisioning (if missing)
-- Install base packages: `docker.io`, `nginx`, `ffmpeg`, `rclone`.
-- Install Docker Compose plugin (`docker-compose-plugin`) if `docker compose` is unavailable.
-- Install tsduck from the matching Ubuntu `.deb` (see https://tsduck.io/tsduck-binaries/), then `apt-get -f install`.
-- Install Go from the official tarball matching `go.mod` (e.g. `go1.26.6.linux-amd64.tar.gz`) into `/usr/local/go` and add to PATH.
-- Start Docker and bring up `docker compose up -d` in `$PROJECT_PATH`.
-- Ensure `$PROJECT_PATH` exists before syncing.
+### Step 3 — Verify deploy config (GATE)
 
-### Step 2b — Generate / sync .env (GATE)
+Confirm `.config/<env_name>/` has what the selected components need:
 
-1. Show a unified diff between local `.env` and server `.env` (if server has one).
-2. Suggest changes:
-   - New keys present locally but missing on server.
-   - Values that differ (e.g., `TMP_DIR`, `MAX_WORKERS`, `ACTIVE_RENDITIONS`).
-   - Keys on server not in local (keep or remove).
-3. Generate a merged `.env` proposal (local as base, apply server-specific overrides the user confirms).
-4. **GATE**: user approves the final `.env` content before upload. Never overwrite server `.env` without confirmation.
+- `.env` — required when deploying `env`.
+- `partner.yaml` — required when deploying `partner`.
 
-### Step 2c — Prepare local config (before sync)
+If either is missing, **stop and ask the user to prepare it**; use
+`.config/prod/{.env,partner.yaml}` as the reference shape. Do not invent values
+and do not copy the repo-root `.env` implicitly. Deployment of `bin`/`client`
+alone is still allowed.
 
-- The deploy scripts read `./config/.env`. Update `config/.env` only; do not modify the repo-root `.env`. If `config/.env` is missing, copy/merge from root `.env` into `config/.env`, then edit `config/.env`.
-- Keep `config/rclone/` present (even if empty) so `deploy-server.sh` does not fail on missing directory.
-- Keep `config/ssl/` with a wildcard cert/key for the server hostname when nginx SSL is required.
+### Step 4 — Combine server `.env` (GATE)
 
-### Step 3 — Choose what to sync (GATE)
+Applies only when `env` is selected.
 
-Offer checkboxes (multi-select):
-- Config + systemd units (`deploy-server.sh`)
-- App binaries (`deploy-app.sh` / `make build`)
-- Client bundle (`deploy-client.sh` / `make build-client`)
-- Environment file (`.env`)
-- Go toolchain (if version mismatch)
+1. Fetch the current server env: `ssh ... cat $PROJECT_PATH/.env`.
+2. Build a merged proposal with `.config/<env_name>/.env` as the base:
+   - Keys present in both: keep the `.config` value (call out any value changes in the diff).
+   - Keys only on the server: keep them, appended under a `# server-only` marker.
+   - Keys only in `.config`: add them.
+3. Show a unified diff against the server `.env`.
+4. **GATE**: user approves the final content. Write the approved file to the scratchpad directory (never to the repo root) and pass it to the deploy script with `--env-file`.
 
-Suggest defaults based on Step 2 findings (e.g., if only Go code changed → app; if service files changed → config). **GATE**: user confirms selection.
+Never overwrite the server `.env` without this confirmation.
 
-### Step 4 — Execute
+### Step 5 — Choose components (GATE)
 
-Run from the correct working directories and pass the server IP where required:
-1. `make build` from repo root (if app selected)
-2. `make build-client` from repo root (if client selected)
-3. `bash config/scripts/deploy-server.sh <ip>` from repo root (config + units + env + scripts)
-4. `bash config/scripts/deploy-app.sh <ip>` only if binaries were not already synced by deploy-server
-5. `bash config/scripts/deploy-client.sh <ip>` from repo root (if client selected)
-6. For fresh installs, run `enable-services.sh` on the server; otherwise `restart-services.sh`
+Offer multi-select with defaults from what changed since the last deploy
+(`git log`/server `LOG-CHANGES.md`):
 
-Important:
-- All scripts take the server IP/host as the first argument and must be run from the repo root (they resolve their own paths and `cd` into the repo root / `config`).
-- `deploy-server.sh` syncs config, units, env, compose and scripts; it also syncs `config/bin` **only when it is non-empty** (run `make build` first, otherwise it skips with a warning).
-- `deploy-app.sh` and `deploy-client.sh` rebuild, archive the previous version, upload, and set rollback pointers. Running `deploy-app.sh` right after `deploy-server.sh` is redundant but safe: rollback pointers are only written when absent, so the original pre-deploy build remains the rollback target.
-- Binaries are uploaded as directory contents after clearing the target, so no nested `bin/bin`.
-- Stream output with a generous timeout (large binaries); stop on first failure and report.
+- `bin` — api, planner, engines binaries.
+- `client` — Vue admin bundle.
+- `env` — server `.env` from Step 4.
+- `partner` — `partner.yaml` from `.config/<env_name>/`.
 
-### Step 5 — Verify
+Notes for `partner`: if the server file differs from `.config/<env_name>/partner.yaml`,
+show the diff and ask whether to replace it; the upload is whole-file (no merge),
+and the previous file is archived before upload.
 
-- `ssh ... systemctl status simlive-*`
-- `curl http://<ip>:8080/` and `https://<host>/` when nginx is configured
-- `curl http://<ip>:8080/live/.../playlist.m3u8` (if channel exists)
-- `rclone lsd <remote>:` on the server
-- Report success/failure per service.
+**GATE**: user confirms the selection.
 
-Health check + auto-rollback:
-- `restart-services.sh` restarts `simlive-planner`, `simlive-engines`, `simlive-api`, then polls for up to 15s until all are `systemctl is-active` and the API port answers.
-- The HTTP probe is connection-level (`curl -s -o /dev/null`), **not** `curl -f`: `GET /` serves the client bundle, so a 404 there is not treated as an API failure.
-- If still unhealthy, it moves the broken `bin`/`client/dist` into `archived/<TS>-<component>-failed-<pid>` and restores the archive named in the pending `.rollback_bin`/`.rollback_client` pointer, restarts, and re-checks.
-- On a healthy restart, pending pointers are cleared. Every outcome is logged to `LOG-CHANGES.md`. Report whether auto-rollback occurred and whether it restored health.
+### Step 6 — Execute
 
-### Step 6 — Record
+Run from the repo root:
 
-Append/update `./config/DEPLOY.md` with:
-- Date, target (name/ip), action (fresh/update), synced components, versions (git commit hash, Go version), verification result, notes.
+```bash
+bash .agents/skills/server-deploy/scripts/deploy.sh <host> \
+  --env-name prod \
+  --only bin,client,env,partner \
+  [--env-file <approved-merged-env>]
+```
 
-Also on the server, `LOG-CHANGES.md` (at `$PROJECT_PATH/LOG-CHANGES.md`) records each sync/rollback with timestamp, archived path, and how to roll back. `archived/` keeps previous `bin`, `client/dist`, `.env` snapshots.
+The script:
+1. Builds the three binaries into `config/bin/` (`go build ./cmd/<svc>/`) and the client (`pnpm build` in `client/`).
+2. Creates `$PROJECT_PATH/archived` and `LOG-CHANGES.md` if absent.
+3. Archives the previous `bin`, `client/dist`, `.env`, `partner.yaml` as `<TS>-<component>` and pins the first archive of the session in `.rollback_<component>`.
+4. Uploads: binaries flat into `bin/`, client as a tarball extracted to `client/dist/`, env and partner files directly.
+5. Restarts `simlive-planner`, `simlive-engines`, `simlive-api` and polls for up to 15s for all units active plus an HTTP answer on `127.0.0.1:8080`.
+6. On failure, restores the pinned archives, restarts, and re-checks; exits non-zero if still unhealthy.
 
-### Rollback (manual)
+Stream output and stop on first failure. Overrides:
+`SSH_KEY=... SSH_USER=... PROJECT_PATH=... bash .agents/skills/server-deploy/scripts/deploy.sh ...`
 
-Triggered by the user asking to roll back, or after an unhealthy deploy:
-1. List archives (newest first): `ssh ... 'ls -1t /root/simlive-go/archived'`.
-2. Show `LOG-CHANGES.md` tail for context.
-3. Ask user which archive to restore, or use `latest`.
-4. Run on server: `bash /root/simlive-go/rollback.sh <archive-name|latest>`.
-   - Archive names are `<TS>-bin`, `<TS>-client-dist`, `<TS>-env`; auto/manual safety copies end in `-failed-<pid>` / `-pre-rollback`.
-   - The component is inferred from the name; the current live copy is moved aside to `archived/<TS>-<component>-pre-rollback` before restoring, so a manual rollback is itself reversible.
-   - Pending `.rollback_*` pointers are cleared.
-5. Re-run Step 5 verification and report.
+### Step 7 — Verify
+
+- Service status and HTTP probe from the deploy script output.
+- `curl -s -o /dev/null -w '%{http_code}' http://<ip>:8080/` and `https://<host>/` when nginx is configured.
+- `curl -s -o /dev/null -w '%{http_code}' http://<ip>:8080/live/<channel>/playlist.m3u8` if a channel exists.
+- Report success/failure per component, and whether auto-rollback ran.
+
+### Step 8 — Record
+
+Append to `.config/DEPLOY.md`:
+- Date, target (name/IP), action (update/rollback), components deployed, git commit (`git rev-parse --short HEAD`), Go version, verification result, notes.
+
+The server keeps its own trail in `$PROJECT_PATH/LOG-CHANGES.md` (deploy, archive, auto-rollback, manual rollback entries) with `archived/` holding previous `bin`, `client/dist`, `.env`, and `partner.yaml`.
+
+## Rollback (manual)
+
+Triggered by the user or after an unhealthy deploy:
+
+```bash
+bash .agents/skills/server-deploy/scripts/rollback.sh <host> list
+bash .agents/skills/server-deploy/scripts/rollback.sh <host> latest
+bash .agents/skills/server-deploy/scripts/rollback.sh <host> <archive-name>
+```
+
+1. `list` shows archives (newest first) plus the `LOG-CHANGES.md` tail.
+2. Ask which archive to restore, or use `latest`.
+3. Archive names are `<TS>-bin`, `<TS>-client-dist`, `<TS>-env`, `<TS>-partner`; safety copies end in `-failed-<pid>` (auto-rollback) or `-pre-rollback` (manual).
+4. The component is inferred from the name. The live copy is moved aside as `<TS>-<component>-pre-rollback` before restoring, so a manual rollback is itself reversible.
+5. The script restarts services and re-runs the health check, then reports.
 
 ## Done Criteria
 
 - SSH connectivity verified.
-- Selected components synced without errors (previous versions archived under `archived/`).
-- Services active on server (health check passed; auto-rollback if not).
-- `./config/DEPLOY.md` updated and server `LOG-CHANGES.md` recorded.
+- Selected components deployed without errors; previous versions archived under `archived/`.
+- All three services active and the API answers (auto-rollback if not).
+- `.config/DEPLOY.md` updated and server `LOG-CHANGES.md` recorded.
 
 ## Notes
 
 - Prefer reusing persisted targets; always confirm before overwriting.
 - Never store private key contents; only paths.
-- For fresh servers, provision prerequisites first (Docker, Compose plugin, nginx, ffmpeg, tsduck, rclone, Go).
-- Configure nginx with `config/ssl` certs and open firewall ports 80/443.
-- Sync rclone config from `~/.config/rclone/rclone.conf` to `/root/.config/rclone/rclone.conf`.
-- Ask before destructive steps (rm, overwrite .env).
-- Capture the git commit hash (`git rev-parse HEAD`) in DEPLOY.md.
-- If `deploy-server.sh` fails due to missing `config/rclone`, create an empty directory and retry.
-- SSH key default is `$HOME/.ssh/partner_vultr` (not `~`, which does not expand from a variable). Override with `SSH_KEY=...`, `SSH_USER=...`, or `PROJECT_PATH=...` env vars.
-- On fresh installs `enable-services.sh` enables units and then delegates to `restart-services.sh`, so the same health check / auto-rollback applies.
-- There is no dedicated `/health` endpoint; keep probes connection-level unless one is added to the API.
+- Never upload or edit systemd units, `docker-compose.yml`, nginx/SSL, or rclone config — those are manual server-side.
+- Ask before destructive steps (overwriting `.env`/`partner.yaml`, deleting archives).
+- `curl -s -o /dev/null` (connection-level) is deliberate: `GET /` serves the client bundle, so a 404 is not an API failure and `-f` must not be used.
+- There is no `/health` endpoint; keep probes connection-level unless one is added.
+- `config/bin/` is gitignored build staging; deleting it only forces a rebuild.
+- `.config/deploy-targets.json` and `.config/DEPLOY.md` are local deployment state and should not be committed.

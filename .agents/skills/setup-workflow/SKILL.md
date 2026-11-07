@@ -1,6 +1,6 @@
 ---
 name: setup-workflow
-description: Install, refresh, or link the GitHub Spec Kit workflow (.specify runtime, templates, constitution, hooks, and workflow skills) in a target project, driven by .specific/workflow.yaml and idempotent across runs. Use when init-flow reaches "Setup Flow Project", when onboarding a repo that needs speckit, or when the user asks to set up, update, or repair the speckit workflow.
+description: Install, refresh, or link the GitHub Spec Kit workflow (.harness runtime, templates, constitution, hooks, and workflow skills) in a target project, driven by .specific/workflow.yaml and idempotent across runs. Use when init-flow reaches "Setup Flow Project", when onboarding a repo that needs speckit, or when the user asks to set up, update, or repair the speckit workflow.
 argument-hint: "<target_project>"
 metadata:
   version: "1.1.0"
@@ -10,7 +10,7 @@ metadata:
 
 One idempotent pass that makes a project ready for the speckit flow:
 
-- `.specify/` — the runtime: linked via `create-relative-link` when shared, otherwise installed by copy from the hash manifest; never written through an existing symlink
+- `.harness/` — the runtime: linked via `create-relative-link` when shared, otherwise installed by copy from the hash manifest; never written through an existing symlink
 - `.specific/workflow.yaml` — the project's own settings (seeded, never overwritten)
 - `.agents/skills/speckit-*` — relative symlinks to `workflow-skills/*`
 
@@ -19,8 +19,8 @@ The skill is common to every project. Per-project context, flow rules, hooks, an
 ## When to use
 
 - `init-flow` step 2 ("Setup Flow Project") invokes it with `$TARGET_PROJECT`
-- User says: "setup speckit", "install the workflow", "refresh .specify", "add the spec-kit flow to this repo"
-- Re-run after updating `workflow-skills/` or `.specify/` in this skills repository
+- User says: "setup speckit", "install the workflow", "refresh .harness", "add the spec-kit flow to this repo"
+- Re-run after updating `workflow-skills/` or `.harness/` in this skills repository
 
 ## When NOT to use
 
@@ -87,10 +87,10 @@ Mapping:
 
 | Config | Written to |
 |---|---|
-| `speckit.*` | `.specify/init-options.json`, `.specify/integration.json` |
-| `constitution.*` | `.specify/memory/constitution.md`, then parsed into `.specific/constitution.yaml` |
+| `speckit.*` | `.harness/init-options.json`, `.harness/integration.json` |
+| `constitution.*` | `.harness/memory/constitution.md`, then parsed into `.specific/constitution.yaml` |
 | `extensions.hooks` | `.specific/extensions.yml` |
-| `workflows.speckit.enabled` | `.specify/workflows/workflow-registry.json` |
+| `workflows.speckit.enabled` | `.harness/workflows/workflow-registry.json` |
 | `skills.link` | `.agents/skills/*` symlinks |
 | `sync.on_conflict` | conflict policy for re-runs |
 
@@ -98,13 +98,13 @@ Mapping:
 
 ## Steps
 
-1. **Validate.** Resolve `target_project`, `source_root`, `skill_dir`. Confirm `source_root/.specify/` and `source_root/workflow-skills/` exist. Abort with the missing path otherwise. If `<target>/.specify` is already a symlink (created by `create-relative-link`), the runtime is shared: skip the `.specify` install in steps 4–5 (linked mode) and never write through the link.
+1. **Validate.** Resolve `target_project`, `source_root`, `skill_dir`. Confirm `source_root/.harness/` and `source_root/workflow-skills/` exist. Abort with the missing path otherwise. If `<target>/.harness` is already a symlink (created by `create-relative-link`), the runtime is shared: skip the `.harness` install in steps 4–5 (linked mode) and never write through the link.
 
 2. **Seed config.** If `<target>/.specific/workflow.yaml` is missing, create `.specific/` and copy `template/input/workflow.template.yaml` there. Never modify an existing file.
 
 3. **Read `speckit.enabled`.** If false, skip steps 4-6, report that the workflow is disabled, and stop.
 
-   4. **Plan the `.specify` install** (no writes). Linked mode (`.specify` is a symlink): `setup_specify.py` plans/applies only the `.specific/*` renders and reports `LINKED .specify`; `add`/`update`/`conflict` then apply to `.specific/extensions.yml` and `.specific/constitution.yaml` only.
+   4. **Plan the `.harness` install** (no writes). Linked mode (`.harness` is a symlink): `setup_specify.py` plans/applies only the `.specific/*` renders and reports `LINKED .harness`; `add`/`update`/`conflict` then apply to `.specific/extensions.yml` and `.specific/constitution.yaml` only.
    ```sh
    python3 "$SKILL_DIR/scripts/setup_specify.py" \
      --target "$TARGET" --source-root "$SOURCE_ROOT" --json
@@ -116,13 +116,13 @@ Mapping:
 
    If `sync.on_conflict` in `.specific/workflow.yaml` is already `keep` or `overwrite`, the plan exits `0` and no prompt is needed (the apply step honors the config).
 
-5. **Apply the `.specify` install:**
+5. **Apply the `.harness` install:**
    ```sh
    python3 "$SKILL_DIR/scripts/setup_specify.py" \
      --target "$TARGET" --source-root "$SOURCE_ROOT" --apply \
      --on-conflict <keep|overwrite>
    ```
-   This copies `scripts/`, `templates/`, `workflows/speckit/`, `.gitignore`, and renders `init-options.json`, `integration.json`, `extensions.yml`, `memory/constitution.md`, `memory/.constitution-template.json`, and `workflows/workflow-registry.json` in copy mode; every write is recorded in `.specify/.install-manifest.json`. In linked mode only the `.specific/*` renders are written and no manifest is touched. Files are never deleted.
+   This copies `scripts/`, `templates/`, `workflows/speckit/`, `.gitignore`, and renders `init-options.json`, `integration.json`, `extensions.yml`, `memory/constitution.md`, `memory/.constitution-template.json`, and `workflows/workflow-registry.json` in copy mode; every write is recorded in `.harness/.install-manifest.json`. In linked mode only the `.specific/*` renders are written and no manifest is touched. Files are never deleted.
 
 6. **Link the workflow skills.**
    ```sh
@@ -138,9 +138,9 @@ Mapping:
 
 7. **Verify.**
    - Re-run both scripts without `--apply`; every line must be `same`, `pinned`, `skip_linked`, or `skip_real_dir` (no `add`/`update`/`replace`/`conflict`).
-   - `.specify/init-options.json`, `.specify/integration.json`, `.specify/workflows/workflow-registry.json` parse as JSON.
+   - `.harness/init-options.json`, `.harness/integration.json`, `.harness/workflows/workflow-registry.json` parse as JSON.
    - `.specific/extensions.yml` parses as YAML; each hook has `command`, and `optional` is a boolean when present.
-   - `.specify/scripts/python/setup_plan.py` (or the `.sh` equivalent) exists and is executable.
+   - `.harness/scripts/python/setup_plan.py` (or the `.sh` equivalent) exists and is executable.
    - Every linked skill resolves: `readlink -f` lands under `$SOURCE_ROOT/workflow-skills/`.
    - `PROJECTS.md` is not required here; `init-flow` handles it.
 
@@ -158,7 +158,7 @@ Mapping:
 | Skill link points elsewhere | `REPLACE` → one batch prompt (default `Y`) |
 | Destination is a real directory | `SKIP_REAL_DIR`, never deleted |
 | `speckit.enabled: false` | Remove `speckit` from the registry; leave files and links untouched |
-| `.specify` is a symlink | Install skipped (`LINKED .specify`); `.specific/*` still rendered |
+| `.harness` is a symlink | Install skipped (`LINKED .harness`); `.specific/*` still rendered |
 
 ## What this skill never does
 
@@ -167,7 +167,7 @@ Mapping:
 - Edit the target's source code, run builds/tests, install dependencies, or commit
 - Rewrite an existing `.specific/workflow.yaml`
 - Copy skills instead of linking them
-- Write through an existing `.specify` symlink (the shared runtime stays untouched)
+- Write through an existing `.harness` symlink (the shared runtime stays untouched)
 - Prune skill links that are no longer listed in `skills.link`
 
 ## Failure-degradation modes
@@ -175,7 +175,7 @@ Mapping:
 | Failure | Behavior |
 |---|---|
 | `target_project` missing / not a directory | Abort before any write |
-| `source_root` has no `.specify/` or `workflow-skills/` | Abort, name the missing path |
+| `source_root` has no `.harness/` or `workflow-skills/` | Abort, name the missing path |
 | `template/input/workflow.template.yaml` unparseable | Abort; report the YAML error and line |
 | `.specific/workflow.yaml` unparseable | Abort; do not fall back silently |
 | PyYAML unavailable | Abort with the install hint `python3 -m pip install pyyaml` |
@@ -188,6 +188,6 @@ Mapping:
 - `template/input/workflow.template.yaml` — the config schema seeded into `.specific/`
 - `template/input/project.template.yaml` — the sibling config for `ingest-project`
 - `template/output/extensions.template.yaml` — render base for `.specific/extensions.yml`
-- `scripts/setup_specify.py` — hash-manifest `.specify` installer
+- `scripts/setup_specify.py` — hash-manifest `.harness` installer
 - `scripts/link_skills.py` — idempotent relative symlink planner
 - `workflow-skills/speckit-*` — the skills that read `.specific/extensions.yml` hooks

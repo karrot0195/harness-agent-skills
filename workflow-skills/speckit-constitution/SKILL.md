@@ -1,7 +1,7 @@
 ---
 name: "speckit-constitution"
 description: "Create or update the project constitution from interactive or provided principle inputs."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+compatibility: "Requires spec-kit project structure with .harness/ directory"
 metadata:
   author: "github-spec-kit"
   source: "templates/commands/constitution.md"
@@ -73,18 +73,18 @@ and commands read the constitution at runtime and are not modified here.
 
 ## Outline
 
-You are updating the project constitution at `.specify/memory/constitution.md`. The active
+You are updating the project constitution at `.harness/memory/constitution.md`. The active
 constitution scaffold is resolved at command time from `constitution-template` through the Spec Kit
 preset/template resolution stack.
 
 Follow this execution flow:
 
-1. Run `python3 .specify/scripts/python/resolve_template.py constitution-template --json` from the repository root and parse `TEMPLATE_CONTENT` as the active template.
+1. Run `python3 .harness/scripts/python/resolve_template.py constitution-template --json` from the repository root and parse `TEMPLATE_CONTENT` as the active template.
    - The shared resolver applies project overrides, composing preset layers, and extension layers
      before the core template fallback. It MUST succeed before continuing.
    - If it fails, stop and report the resolution error; do not continue with only one contributing
      template layer.
-   - If `.specify/memory/constitution.md` exists, load it as the source of current project-specific
+   - If `.harness/memory/constitution.md` exists, load it as the source of current project-specific
      values and amendments. Preserve information that is still applicable when applying the newly
      resolved scaffold.
    - If it does not exist but `.specific/constitution.yaml` does, load that as the source of current
@@ -125,7 +125,7 @@ Follow this execution flow:
    - Dates ISO format YYYY-MM-DD.
    - Principles are declarative, testable, and free of vague language ("should" → replace with MUST/SHOULD rationale where appropriate).
 
-6. Write the completed constitution back to `.specify/memory/constitution.md` (overwrite), then
+6. Write the completed constitution back to `.harness/memory/constitution.md` (overwrite), then
    parse that document into `.specific/constitution.yaml` (overwrite) so project config can load it.
 
 7. Output a final summary to the user with:
@@ -145,7 +145,7 @@ If the user supplies partial updates (e.g., only one principle revision), still 
 
 If critical info missing (e.g., ratification date truly unknown), insert `TODO(<FIELD_NAME>): explanation` and include in the Sync Impact Report under deferred items.
 
-Write only `.specify/memory/constitution.md` and `.specific/constitution.yaml`; do not create or modify template source files.
+Write only `.harness/memory/constitution.md` and `.specific/constitution.yaml`; do not create or modify template source files.
 
 ## Post-Execution Checks
 

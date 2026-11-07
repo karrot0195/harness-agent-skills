@@ -38,7 +38,7 @@ Restate the user's question in one sentence to confirm scope. If the question is
 2. Read `AGENTS.md` at the repo root for project memory, code style, architecture notes, workflows.
 3. Read `CLAUDE.md` if present (project-specific agent instructions).
 4. If the question references a feature/spec, locate the relevant directory under `specs/` and read its `spec.md`, `plan.md`, `tasks.md` as needed.
-5. Check `.specify/feature.json` for the current feature directory when relevant.
+5. Check `.harness/feature.json` for the current feature directory when relevant.
 
 ### 3. Scan the Codebase
 

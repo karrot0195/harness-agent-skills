@@ -21,7 +21,7 @@ def _trim_trailing_separators(value: Path) -> str:
 def find_specify_root(start_dir: Path | None = None) -> Path | None:
     current = (start_dir or Path.cwd()).resolve()
     while True:
-        if (current / ".specify").is_dir():
+        if (current / ".harness").is_dir():
             return current
         parent = current.parent
         if parent == current:
@@ -48,10 +48,10 @@ def resolve_specify_init_dir() -> Path:
             file=sys.stderr,
         )
         raise SystemExit(1)
-    if not (init_root / ".specify").is_dir():
+    if not (init_root / ".harness").is_dir():
         print(
             "ERROR: SPECIFY_INIT_DIR is not a Spec Kit project "
-            f"(no .specify/ directory): {init_root}",
+            f"(no .harness/ directory): {init_root}",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -71,7 +71,7 @@ def get_repo_root(script_file: Path | None = None) -> Path:
         if script_root is not None:
             return script_root
 
-        # Installed scripts live at .specify/scripts/python/<script>.py.
+        # Installed scripts live at .harness/scripts/python/<script>.py.
         return script_file.resolve().parents[3]
     return Path.cwd().resolve()
 
@@ -81,7 +81,7 @@ def get_current_branch() -> str:
 
 
 def read_feature_json_feature_directory(repo_root: Path) -> str:
-    feature_json = repo_root / ".specify" / "feature.json"
+    feature_json = repo_root / ".harness" / "feature.json"
     if not feature_json.is_file():
         return ""
     try:
@@ -113,7 +113,7 @@ def persist_feature_json(repo_root: Path, feature_dir_value: str) -> None:
     if current == value:
         return
 
-    specify_dir = repo_root / ".specify"
+    specify_dir = repo_root / ".harness"
     specify_dir.mkdir(parents=True, exist_ok=True)
     (specify_dir / "feature.json").write_bytes(
         _json_dump({"feature_directory": value}).encode("utf-8")
@@ -142,7 +142,7 @@ def get_feature_paths(
 
     # SPECIFY_FEATURE_NO_PERSIST is the environment-level equivalent of no_persist=True,
     # letting an orchestrator (multi-agent runner, CI matrix) guarantee that no
-    # script invocation in the process tree writes .specify/feature.json, even
+    # script invocation in the process tree writes .harness/feature.json, even
     # scripts that don't pass no_persist themselves (#4128).
     no_persist = no_persist or os.environ.get("SPECIFY_FEATURE_NO_PERSIST", "") in ("1", "true")
 
@@ -153,12 +153,12 @@ def get_feature_paths(
             feature_dir = repo_root / feature_dir
         if not no_persist:
             persist_feature_json(repo_root, feature_dir_raw)
-    elif (repo_root / ".specify" / "feature.json").is_file():
+    elif (repo_root / ".harness" / "feature.json").is_file():
         stored = read_feature_json_feature_directory(repo_root)
         if not stored:
             print(
                 "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY "
-                "or ensure .specify/feature.json contains feature_directory.",
+                "or ensure .harness/feature.json contains feature_directory.",
                 file=sys.stderr,
             )
             raise SystemExit(1)
@@ -168,7 +168,7 @@ def get_feature_paths(
     else:
         print(
             "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY "
-            "or run the specify command to create .specify/feature.json.",
+            "or run the specify command to create .harness/feature.json.",
             file=sys.stderr,
         )
         raise SystemExit(1)
@@ -316,15 +316,15 @@ def resolve_template(template_name: str, repo_root: Path) -> Path | None:
     """Resolve a template name to a file path using the priority stack.
 
     Order (mirrors resolve_template in scripts/bash/common.sh):
-      1. .specify/templates/overrides/
+      1. .harness/templates/overrides/
       2. .specific/presets/<preset-id>/templates/ (sorted by .registry priority)
       3. .specific/extensions/<ext-id>/templates/ (hidden directories skipped)
-      4. .specify/templates/ (core)
+      4. .harness/templates/ (core)
     """
     if not _is_safe_component(template_name):
         return None
 
-    base = repo_root / ".specify" / "templates"
+    base = repo_root / ".harness" / "templates"
 
     override = base / "overrides" / f"{template_name}.md"
     if override.is_file():
@@ -644,7 +644,7 @@ def resolve_template_content(template_name: str, repo_root: Path) -> str | None:
 
     override = (
         repo_root
-        / ".specify"
+        / ".harness"
         / "templates"
         / "overrides"
         / f"{template_name}.md"
@@ -669,7 +669,7 @@ def resolve_template_content(template_name: str, repo_root: Path) -> str | None:
             layers.append((candidate, "replace"))
             return compose_from_base()
 
-    core = repo_root / ".specify" / "templates" / f"{template_name}.md"
+    core = repo_root / ".harness" / "templates" / f"{template_name}.md"
     if core.is_file():
         layers.append((core, "replace"))
         return compose_from_base()
@@ -683,7 +683,7 @@ def resolve_template_content(template_name: str, repo_root: Path) -> str | None:
 
 
 def get_invoke_separator(repo_root: Path) -> str:
-    integration_json = repo_root / ".specify" / "integration.json"
+    integration_json = repo_root / ".harness" / "integration.json"
     if not integration_json.is_file():
         return "."
     # Split the parse out of the lookup and guard the top-level shape, matching

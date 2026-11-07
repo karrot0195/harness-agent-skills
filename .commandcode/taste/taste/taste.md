@@ -1,7 +1,0 @@
-# Taste
-- When a symlink already exists during sync, prompt once with a summary of existing skills and default to overwrite (Y/n) instead of prompting per item or silently skipping. Confidence: 0.9
-- Expects agent skills to be improved/rewritten to skill-design best practices and kept structurally consistent with sibling skills (valid frontmatter whose `name` matches the directory, clear "when to use / when NOT to use", deterministic steps, failure modes, idempotency) rather than patched minimally. Confidence: 0.6
-- Wants agent skills written as generic, reusable skills; anything project-specific should live in per-project config files (e.g. `.specific/*.yaml` overrides) rather than being hardcoded into the skill. Confidence: 0.8
-- Wants templates and config schemas as YAML files kept in a `template/` tree, split into `template/input/` (seeds copied into each project's `./.specific/`) and `template/output/` (bases rendered into generated files), instead of inline YAML/JSON or markdown-only docs. Confidence: 0.7
-- Constitution output must never be written to `.specify/memory/constitution.md`; it should only be written to `.specific/constitution.yaml`. Confidence: 0.95
-- Prefers sharing repo assets (AGENTS.md, `.specify/` runtime, workflow skills) into target projects via relative symlinks (create-relative-link) rather than copies — explicitly corrected init-flow's `.specify` copy-install to a link. Confidence: 0.85

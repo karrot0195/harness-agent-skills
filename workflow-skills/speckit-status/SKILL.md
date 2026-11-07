@@ -1,7 +1,7 @@
 ---
 name: "speckit-status"
 description: "Check the current status of the active feature's tasks and artifacts, then suggest the next step in the speckit flow. Read-only: never modifies files."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+compatibility: "Requires spec-kit project structure with .harness/ directory"
 metadata:
   author: "local"
   source: "custom"
@@ -33,7 +33,7 @@ the single most useful next command. Never modify files.
 
 ### 1. Resolve the active feature
 
-1. Read `.specify/feature.json` (if present) for `feature_directory`.
+1. Read `.harness/feature.json` (if present) for `feature_directory`.
 2. If absent, look for the most recently modified directory under `specs/` and use it; if none,
    report that no feature is active and suggest `/speckit-specify` to start one.
 3. Derive absolute paths: `FEATURE_DIR`, `SPEC`, `PLAN`, `TASKS`, `CHECKLISTS_DIR`.

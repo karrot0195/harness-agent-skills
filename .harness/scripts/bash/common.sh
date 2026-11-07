@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Common functions and variables for all scripts
 
-# Find repository root by searching upward for .specify directory
+# Find repository root by searching upward for .harness directory
 # This is the primary marker for spec-kit projects
 find_specify_root() {
     local dir="${1:-$(pwd)}"
@@ -10,7 +10,7 @@ find_specify_root() {
     dir="$(cd -- "$dir" 2>/dev/null && pwd)" || return 1
     local prev_dir=""
     while true; do
-        if [ -d "$dir/.specify" ]; then
+        if [ -d "$dir/.harness" ]; then
             echo "$dir"
             return 0
         fi
@@ -25,12 +25,12 @@ find_specify_root() {
 }
 
 # Resolve an explicit SPECIFY_INIT_DIR project override (the directory that
-# *contains* .specify/), for non-interactive / CI use — e.g. running a Spec Kit
+# *contains* .harness/), for non-interactive / CI use — e.g. running a Spec Kit
 # command against a member project from a monorepo root without cd.
 #
 # Precondition: SPECIFY_INIT_DIR is non-empty. Echoes the validated absolute
 # project root, or prints an error and returns 1. Strict by design: the path
-# must exist and contain .specify/, with no silent fallback to cwd or the
+# must exist and contain .harness/, with no silent fallback to cwd or the
 # script-location default (which would silently write to the wrong project).
 #
 # This is the single resolver: bundled extensions inherit it by sourcing core
@@ -44,14 +44,14 @@ resolve_specify_init_dir() {
         echo "ERROR: SPECIFY_INIT_DIR does not point to an existing directory: $SPECIFY_INIT_DIR" >&2
         return 1
     fi
-    if [[ ! -d "$init_root/.specify" ]]; then
-        echo "ERROR: SPECIFY_INIT_DIR is not a Spec Kit project (no .specify/ directory): $init_root" >&2
+    if [[ ! -d "$init_root/.harness" ]]; then
+        echo "ERROR: SPECIFY_INIT_DIR is not a Spec Kit project (no .harness/ directory): $init_root" >&2
         return 1
     fi
     printf '%s\n' "$init_root"
 }
 
-# Get repository root, prioritizing .specify directory
+# Get repository root, prioritizing .harness directory
 # This prevents using a parent repository when spec-kit is initialized in a subdirectory
 get_repo_root() {
     # Explicit project override wins (see resolve_specify_init_dir).
@@ -60,7 +60,7 @@ get_repo_root() {
         return
     fi
 
-    # First, look for .specify directory (spec-kit's own marker)
+    # First, look for .harness directory (spec-kit's own marker)
     local specify_root
     if specify_root=$(find_specify_root); then
         echo "$specify_root"
@@ -75,7 +75,7 @@ get_repo_root() {
 # Get current feature name from explicit state only.
 # Returns the feature identifier or empty string if none is set.
 # Feature state is set by SPECIFY_FEATURE (from create-new-feature or
-# the git extension) or implicitly via .specify/feature.json.
+# the git extension) or implicitly via .harness/feature.json.
 get_current_branch() {
     if [[ -n "${SPECIFY_FEATURE:-}" ]]; then
         echo "$SPECIFY_FEATURE"
@@ -87,14 +87,14 @@ get_current_branch() {
     echo ""
 }
 
-# Safely read .specify/feature.json's "feature_directory" value.
+# Safely read .harness/feature.json's "feature_directory" value.
 # Prints the raw value (possibly relative) to stdout, or empty string if the file
 # is missing, unparseable, or does not contain the key. Always returns 0 so callers
 # under `set -e` cannot be aborted by parser failure.
 # Parser order mirrors the historical get_feature_paths behavior: jq -> python3 -> grep/sed.
 read_feature_json_feature_directory() {
     local repo_root="$1"
-    local fj="$repo_root/.specify/feature.json"
+    local fj="$repo_root/.harness/feature.json"
     [[ -f "$fj" ]] || { printf '%s' ''; return 0; }
 
     # Try parsers in order (jq -> python3 -> grep/sed), falling through on
@@ -128,14 +128,14 @@ read_feature_json_feature_directory() {
     return 0
 }
 
-# Persist a feature_directory value to .specify/feature.json.
+# Persist a feature_directory value to .harness/feature.json.
 # Writes only when the file is missing or the value differs from what's stored.
 # Accepts the raw (possibly relative) path — callers should pass the original
 # user-supplied value, not the normalized absolute path.
 _persist_feature_json() {
     local repo_root="$1"
     local feature_dir_value="$2"
-    local fj="$repo_root/.specify/feature.json"
+    local fj="$repo_root/.harness/feature.json"
 
     # Strip repo_root prefix if the value is absolute and under repo_root
     if [[ "$feature_dir_value" == "$repo_root/"* ]]; then
@@ -149,8 +149,8 @@ _persist_feature_json() {
         return 0
     fi
 
-    # Ensure .specify/ directory exists
-    mkdir -p "$repo_root/.specify"
+    # Ensure .harness/ directory exists
+    mkdir -p "$repo_root/.harness"
 
     # Write feature.json — prefer jq for safe JSON, fall back to printf
     if command -v jq >/dev/null 2>&1; then
@@ -162,7 +162,7 @@ _persist_feature_json() {
 
 get_feature_paths() {
     # Read-only callers (e.g. check-prerequisites.sh --paths-only) pass
-    # --no-persist so pure path resolution never writes .specify/feature.json,
+    # --no-persist so pure path resolution never writes .harness/feature.json,
     # which would dirty the working tree or overwrite a pinned value (issue #3025).
     local no_persist=false
     if [[ "${1:-}" == "--no-persist" ]]; then
@@ -171,7 +171,7 @@ get_feature_paths() {
     fi
     # SPECIFY_FEATURE_NO_PERSIST is the environment-level equivalent of --no-persist,
     # letting an orchestrator (multi-agent runner, CI matrix) guarantee that no
-    # script invocation in the process tree writes .specify/feature.json, even
+    # script invocation in the process tree writes .harness/feature.json, even
     # scripts that don't pass --no-persist themselves (#4128).
     if [[ "${SPECIFY_FEATURE_NO_PERSIST:-}" == "1" || "${SPECIFY_FEATURE_NO_PERSIST:-}" == "true" ]]; then
         no_persist=true
@@ -186,7 +186,7 @@ get_feature_paths() {
 
     # Resolve feature directory.  Priority:
     #   1. SPECIFY_FEATURE_DIRECTORY env var (explicit override)
-    #   2. .specify/feature.json "feature_directory" key (persisted by specify command)
+    #   2. .harness/feature.json "feature_directory" key (persisted by specify command)
     #   3. Error — no feature context available
     local feature_dir
     if [[ -n "${SPECIFY_FEATURE_DIRECTORY:-}" ]]; then
@@ -198,7 +198,7 @@ get_feature_paths() {
         if [[ "$no_persist" != true ]]; then
             _persist_feature_json "$repo_root" "$SPECIFY_FEATURE_DIRECTORY"
         fi
-    elif [[ -f "$repo_root/.specify/feature.json" ]]; then
+    elif [[ -f "$repo_root/.harness/feature.json" ]]; then
         local _fd
         _fd=$(read_feature_json_feature_directory "$repo_root")
         if [[ -n "$_fd" ]]; then
@@ -206,11 +206,11 @@ get_feature_paths() {
             # Normalize relative paths to absolute under repo root
             [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
         else
-            echo "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY or ensure .specify/feature.json contains feature_directory." >&2
+            echo "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY or ensure .harness/feature.json contains feature_directory." >&2
             return 1
         fi
     else
-        echo "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY or run the specify command to create .specify/feature.json." >&2
+        echo "ERROR: Feature directory not found. Set SPECIFY_FEATURE_DIRECTORY or run the specify command to create .harness/feature.json." >&2
         return 1
     fi
 
@@ -249,7 +249,7 @@ get_invoke_separator() {
         return 0
     fi
 
-    local integration_json="$repo_root/.specify/integration.json"
+    local integration_json="$repo_root/.harness/integration.json"
     local separator="."
     local parsed=0
 
@@ -510,14 +510,14 @@ for _, ext_id in sorted(ranked):
 }
 
 # Resolve a template name to a file path using the priority stack:
-#   1. .specify/templates/overrides/
+#   1. .harness/templates/overrides/
 #   2. .specific/presets/<preset-id>/templates/ (sorted by priority from .registry)
 #   3. .specific/extensions/<ext-id>/templates/
-#   4. .specify/templates/ (core)
+#   4. .harness/templates/ (core)
 resolve_template() {
     local template_name="$1"
     local repo_root="$2"
-    local base="$repo_root/.specify/templates"
+    local base="$repo_root/.harness/templates"
 
     case "$template_name" in ""|*[!a-z0-9-]*) return 1 ;; esac
 
@@ -626,7 +626,7 @@ except Exception:
 resolve_template_content() {
     local template_name="$1"
     local repo_root="$2"
-    local base="$repo_root/.specify/templates"
+    local base="$repo_root/.harness/templates"
 
     case "$template_name" in ""|*[!a-z0-9-]*) return 1 ;; esac
 

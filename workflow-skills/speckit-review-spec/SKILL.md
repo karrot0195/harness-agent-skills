@@ -1,7 +1,7 @@
 ---
 name: "speckit-review-spec"
 description: "Review the active feature's spec for readiness — reusing the analyze and checklist findings — then give a STABLE/DONE or NEEDS-CHANGE verdict with the concrete edits to make next. Read-only: never modifies files."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+compatibility: "Requires spec-kit project structure with .harness/ directory"
 metadata:
   author: "local"
   source: "custom"
@@ -76,7 +76,7 @@ This is a review/verdict layer over the existing analysis: it **reuses**
 
 ### 1. Resolve the active feature
 
-Run `python3 .specify/scripts/python/check_prerequisites.py --json --require-spec --include-tasks` once from repo root and parse FEATURE_DIR and AVAILABLE_DOCS. Derive:
+Run `python3 .harness/scripts/python/check_prerequisites.py --json --require-spec --include-tasks` once from repo root and parse FEATURE_DIR and AVAILABLE_DOCS. Derive:
 
 - SPEC = FEATURE_DIR/spec.md
 - PLAN = FEATURE_DIR/plan.md (optional)

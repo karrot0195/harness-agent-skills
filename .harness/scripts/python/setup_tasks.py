@@ -140,9 +140,9 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "Template 'tasks-template' was not found in any supported location "
             "(overrides, presets, extensions, or shared core). Add an override at "
-            ".specify/templates/overrides/tasks-template.md, or run 'specify init' "
+            ".harness/templates/overrides/tasks-template.md, or run 'specify init' "
             "/ reinstall shared infra to restore the core "
-            ".specify/templates/tasks-template.md template.",
+            ".harness/templates/tasks-template.md template.",
             file=sys.stderr,
         )
         return 1

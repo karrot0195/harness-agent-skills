@@ -1,6 +1,6 @@
 ---
 name: speckit-upgrade
-description: Re-apply this repository's Spec Kit customizations after upgrading to a new upstream speckit release. Keeps the standard .specify/memory/constitution.md write, mirrors it to .specific/constitution.yaml, and relocates extension hooks plus preset/extension template layers under .specific/. Use when bumping the speckit version, refreshing .specify/ or workflow-skills/ from upstream, or when speckit skills start reading .specify/extensions.yml or .specify/memory/constitution.md again.
+description: Re-apply this repository's Spec Kit customizations after upgrading to a new upstream speckit release. Keeps the standard .harness/memory/constitution.md write, mirrors it to .specific/constitution.yaml, and relocates extension hooks plus preset/extension template layers under .specific/. Use when bumping the speckit version, refreshing .harness/ or workflow-skills/ from upstream, or when speckit skills start reading .harness/extensions.yml or .harness/memory/constitution.md again.
 argument-hint: "[upstream_version]"
 metadata:
   version: "1.0.0"
@@ -8,27 +8,27 @@ metadata:
 
 # speckit-upgrade
 
-Upstream GitHub Spec Kit assumes everything lives under `.specify/`. This
+Upstream GitHub Spec Kit assumes everything lives under `.harness/`. This
 repository deliberately keeps project-owned state under `.specific/`:
 
-- the constitution is authored at `.specify/memory/constitution.md` (standard
+- the constitution is authored at `.harness/memory/constitution.md` (standard
   flow) and mirrored to `.specific/constitution.yaml` for project config;
 - extension hooks live in `.specific/extensions.yml`;
 - preset and extension template layers are resolved from `.specific/presets/`
   and `.specific/extensions/`.
 
 A new upstream release overwrites `workflow-skills/speckit-*/SKILL.md`,
-`.specify/scripts/`, and `.specify/templates/`, which reintroduces the upstream
+`.harness/scripts/`, and `.harness/templates/`, which reintroduces the upstream
 paths. This skill re-applies the local layout after every upgrade.
 
 ## When to use
 
 - The user bumps `speckit.version` in `.specific/workflow.yaml` or
   `template/input/workflow.template.yaml`.
-- `.specify/` or `workflow-skills/` was refreshed from an upstream release.
-- A `speckit-*` skill reads `.specify/extensions.yml` or
-  `.specify/memory/constitution.md` again.
-- `setup-workflow` starts writing `.specify/extensions.yml`.
+- `.harness/` or `workflow-skills/` was refreshed from an upstream release.
+- A `speckit-*` skill reads `.harness/extensions.yml` or
+  `.harness/memory/constitution.md` again.
+- `setup-workflow` starts writing `.harness/extensions.yml`.
 
 ## When NOT to use
 
@@ -49,28 +49,28 @@ paths. This skill re-applies the local layout after every upgrade.
    SOURCE_ROOT="$(git -C "<skill-dir>" rev-parse --show-toplevel)"
    ```
 
-3. **`target`** (optional) — a project that already has `.specify/` and
+3. **`target`** (optional) — a project that already has `.harness/` and
    `.specific/`. When provided, also run the setup refresh in step 6.
 
 ## Layout contract
 
 | Concern | Standard upstream | This repository |
 |---|---|---|
-| Constitution authoring | `.specify/memory/constitution.md` | unchanged |
+| Constitution authoring | `.harness/memory/constitution.md` | unchanged |
 | Constitution for project config | — | `.specific/constitution.yaml` (mirror) |
-| Extension hooks | `.specify/extensions.yml` | `.specific/extensions.yml` |
-| Preset template layer | `.specify/presets/` | `.specific/presets/` |
-| Extension template layer | `.specify/extensions/` | `.specific/extensions/` |
-| Core templates | `.specify/templates/` | unchanged |
+| Extension hooks | `.harness/extensions.yml` | `.specific/extensions.yml` |
+| Preset template layer | `.harness/presets/` | `.specific/presets/` |
+| Extension template layer | `.harness/extensions/` | `.specific/extensions/` |
+| Core templates | `.harness/templates/` | unchanged |
 
-Do not move `.specify/scripts/`, `.specify/templates/`, or
-`.specify/workflows/`; only the four concerns above change.
+Do not move `.harness/scripts/`, `.harness/templates/`, or
+`.harness/workflows/`; only the four concerns above change.
 
 **Format contract.** `.specific/constitution.yaml` is the **parsed** form of the
 constitution and MUST parse as YAML (the structured
 `project_name`/`version`/`ratified`/`last_amended`/`principles`/`sections`/
 `governance`/`body` schema in `.specific/workflow.yaml`). It is a mirror of
-`.specify/memory/constitution.md`, but a copy of the Markdown bytes under a
+`.harness/memory/constitution.md`, but a copy of the Markdown bytes under a
 `.yaml` name is a defect — the file would fail `yaml.safe_load`. See step 2b and
 step 5a.
 
@@ -78,7 +78,7 @@ step 5a.
 
 ### 0. Preflight
 
-1. Confirm `SOURCE_ROOT/.specify/` and `SOURCE_ROOT/workflow-skills/` exist.
+1. Confirm `SOURCE_ROOT/.harness/` and `SOURCE_ROOT/workflow-skills/` exist.
    Abort with the missing path if either is absent.
 2. Record the current version:
    ```sh
@@ -109,7 +109,7 @@ for f in "$SOURCE_ROOT"/workflow-skills/speckit-*/SKILL.md; do
   case "$f" in
     */speckit-constitution/SKILL.md) continue ;;
   esac
-  sed -i 's|\.specify/memory/constitution\.md|.specific/constitution.yaml|g' "$f"
+  sed -i 's|\.harness/memory/constitution\.md|.specific/constitution.yaml|g' "$f"
 done
 ```
 
@@ -118,10 +118,10 @@ MUST keep the standard flow and add the mirror. Its Outline must contain these
 three properties:
 
 - The intro says the constitution is updated at
-  `.specify/memory/constitution.md`.
-- Step 1 loads `.specify/memory/constitution.md` when present, falls back to
+  `.harness/memory/constitution.md`.
+- Step 1 loads `.harness/memory/constitution.md` when present, falls back to
   `.specific/constitution.yaml`, and otherwise uses the resolved template.
-- Step 6 writes `.specify/memory/constitution.md`, then serializes the same
+- Step 6 writes `.harness/memory/constitution.md`, then serializes the same
   constitution into `.specific/constitution.yaml` as **valid YAML** (structured
   `project_name`/`version`/`ratified`/`last_amended`/`principles`/`sections`/
   `governance`/`body` per the `.specific/workflow.yaml` schema). Copying the
@@ -132,7 +132,7 @@ If upstream changed the surrounding wording, preserve its structure and apply
 the same intent. The final constraint line must read:
 
 ```text
-Write only `.specify/memory/constitution.md` and `.specific/constitution.yaml`; do not create or modify template source files.
+Write only `.harness/memory/constitution.md` and `.specific/constitution.yaml`; do not create or modify template source files.
 ```
 
 ### 3. Patch extension hooks
@@ -140,18 +140,18 @@ Write only `.specify/memory/constitution.md` and `.specific/constitution.yaml`; 
 **3a. Skills.** Replace every hook path:
 
 ```sh
-sed -i 's|\.specify/extensions\.yml|.specific/extensions.yml|g' \
+sed -i 's|\.harness/extensions\.yml|.specific/extensions.yml|g' \
   "$SOURCE_ROOT"/workflow-skills/speckit-*/SKILL.md
 ```
 
-**3b. Move the file.** If `.specify/extensions.yml` exists, move it:
+**3b. Move the file.** If `.harness/extensions.yml` exists, move it:
 
 ```sh
-if [ -f "$SOURCE_ROOT/.specify/extensions.yml" ]; then
+if [ -f "$SOURCE_ROOT/.harness/extensions.yml" ]; then
   if [ -f "$SOURCE_ROOT/.specific/extensions.yml" ]; then
     echo "Both extensions files exist; merge hooks manually"
   else
-    mv "$SOURCE_ROOT/.specify/extensions.yml" "$SOURCE_ROOT/.specific/extensions.yml"
+    mv "$SOURCE_ROOT/.harness/extensions.yml" "$SOURCE_ROOT/.specific/extensions.yml"
   fi
 fi
 ```
@@ -159,46 +159,46 @@ fi
 Never overwrite an existing `.specific/extensions.yml`; merge hooks manually if
 both exist.
 
-**3c. Install manifest.** In `.specify/.install-manifest.json`, rename the
-`".specify/extensions.yml"` key to `".specific/extensions.yml"`.
+**3c. Install manifest.** In `.harness/.install-manifest.json`, rename the
+`".harness/extensions.yml"` key to `".specific/extensions.yml"`.
 
 ### 4. Patch preset and extension template layers
 
-Patch the source resolvers under `SOURCE_ROOT/.specify/scripts/`. Target
+Patch the source resolvers under `SOURCE_ROOT/.harness/scripts/`. Target
 projects receive the same files when `setup-workflow` refreshes them (step 6).
 
 Python (`common.py`):
 
 ```sh
 sed -i \
-  -e 's|\.specify/presets|.specific/presets|g' \
-  -e 's|\.specify/extensions|.specific/extensions|g' \
-  -e 's|repo_root / "\.specify" / "presets"|repo_root / ".specific" / "presets"|g' \
-  -e 's|repo_root / "\.specify" / "extensions"|repo_root / ".specific" / "extensions"|g' \
-  "$SOURCE_ROOT/.specify/scripts/python/common.py"
+  -e 's|\.harness/presets|.specific/presets|g' \
+  -e 's|\.harness/extensions|.specific/extensions|g' \
+  -e 's|repo_root / "\.harness" / "presets"|repo_root / ".specific" / "presets"|g' \
+  -e 's|repo_root / "\.harness" / "extensions"|repo_root / ".specific" / "extensions"|g' \
+  "$SOURCE_ROOT/.harness/scripts/python/common.py"
 ```
 
 Bash (`common.sh`):
 
 ```sh
 sed -i \
-  -e 's|\.specify/presets|.specific/presets|g' \
-  -e 's|\.specify/extensions|.specific/extensions|g' \
-  -e 's|\$repo_root/\.specify/presets|$repo_root/.specific/presets|g' \
-  -e 's|\$repo_root/\.specify/extensions|$repo_root/.specific/extensions|g' \
-  "$SOURCE_ROOT/.specify/scripts/bash/common.sh"
+  -e 's|\.harness/presets|.specific/presets|g' \
+  -e 's|\.harness/extensions|.specific/extensions|g' \
+  -e 's|\$repo_root/\.harness/presets|$repo_root/.specific/presets|g' \
+  -e 's|\$repo_root/\.harness/extensions|$repo_root/.specific/extensions|g' \
+  "$SOURCE_ROOT/.harness/scripts/bash/common.sh"
 ```
 
-Keep the `.specify/templates` base path unchanged.
+Keep the `.harness/templates` base path unchanged.
 
 ### 5. Patch the setup tooling and docs
 
 **5a. `setup_specify.py`** (`.agents/skills/setup-workflow/scripts/`):
 
 - `GENERATED_FILES` includes `.specific/extensions.yml`,
-  `.specify/memory/constitution.md`, and `.specific/constitution.yaml`.
+  `.harness/memory/constitution.md`, and `.specific/constitution.yaml`.
 - `collect_desired` writes the rendered Markdown to
-  `.specify/memory/constitution.md` and serializes the constitution to **YAML**
+  `.harness/memory/constitution.md` and serializes the constitution to **YAML**
   for `.specific/constitution.yaml` (helper `render_constitution_yaml`, schema
   per `.specific/workflow.yaml`). Never copy the Markdown bytes into the `.yaml`
   path — the file MUST parse as YAML (`yaml.safe_load`).
@@ -214,7 +214,7 @@ Keep the `.specify/templates` base path unchanged.
 The setup-workflow mapping row must read:
 
 ```text
-| `constitution.*` | `.specify/memory/constitution.md`, then serialized as YAML into `.specific/constitution.yaml` |
+| `constitution.*` | `.harness/memory/constitution.md`, then serialized as YAML into `.specific/constitution.yaml` |
 ```
 
 ### 6. Refresh a target (optional)
@@ -240,8 +240,8 @@ bash "$SOURCE_ROOT/.agents/skills/speckit-upgrade/scripts/verify_customizations.
 
 The verifier checks:
 
-- no stale `.specify/extensions.yml`, `.specify/presets`, or
-  `.specify/extensions/` references in `workflow-skills/` or the resolvers;
+- no stale `.harness/extensions.yml`, `.harness/presets`, or
+  `.harness/extensions/` references in `workflow-skills/` or the resolvers;
 - `common.py` and `common.sh` resolve presets/extensions from `.specific/`;
 - `resolve_template.py constitution-template --json` succeeds;
 - `python3 -m py_compile` and `bash -n` pass;
@@ -268,7 +268,7 @@ chore(speckit): re-apply .specific layout for speckit <version>
 |---|---|
 | `workflow-skills/` missing | Abort; the upstream refresh is incomplete |
 | Mixed release files | Abort; finish the upgrade before patching |
-| Both `.specify/extensions.yml` and `.specific/extensions.yml` exist | Do not overwrite; show both and ask which hooks win |
+| Both `.harness/extensions.yml` and `.specific/extensions.yml` exist | Do not overwrite; show both and ask which hooks win |
 | `.specific/constitution.yaml` does not parse as YAML (Markdown copy) | Add/restore `render_constitution_yaml` in `setup_specify.py` and re-check the constitution skill step 6 (step 5a, step 2b) |
 | Upstream rewrote the constitution skill | Apply the intent from step 2b; do not blindly sed the standard path away |
 | Verifier reports a stale path in a new file | Add the path to the patch set and re-run |
@@ -277,7 +277,7 @@ chore(speckit): re-apply .specific layout for speckit <version>
 ## Notes
 
 - The patch set is intentionally textual and idempotent. Re-running it is safe.
-- Never edit `.specify/templates/*.md`; those are the versioned template layer.
+- Never edit `.harness/templates/*.md`; those are the versioned template layer.
 - Never touch `specs/` or application source while running this skill.
 - When upstream adds a new skill, run step 2a and 3a over it too; the glob
   `workflow-skills/speckit-*/SKILL.md` covers it automatically.
