@@ -6,6 +6,9 @@
 - Before running `speckit-specify`, `speckit-plan`, or `speckit-tasks`, read `@.specific/project.yaml`.
 - After running `speckit-implement`, run `speckit-review-spec`, then record the change in `@LOGS.md` via `speckit-log`.
 - While running `speckit-implement`, if the work diverges from `spec.md` or `plan.md`, update those documents first, then run `speckit-tasks` to re-synchronize `tasks.md`.
+- when execute a skills, should load .specific/exprences/{skillName}.md to load the skill's experience
+- improvement the skill's experience every time when execute it
+
 
 ### SHOULD NOT
 - assume requirements. If something is unclear, ask the user.
