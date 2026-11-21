@@ -8,8 +8,12 @@
 - While running `speckit-implement`, if the work diverges from `spec.md` or `plan.md`, update those documents first, then run `speckit-tasks` to re-synchronize `tasks.md`.
 - when execute a skills, should load .specific/exprences/{skillName}.md to load the skill's experience
 - improvement the skill's experience every time when execute it
-
+- secret information, personal information, etc., should be stored in `@.personal.` folder
 
 ### SHOULD NOT
 - assume requirements. If something is unclear, ask the user.
 - leave open questions unresolved. Try suggest a solution and/or a fallback plan.
+
+## SKILLS
+ - before start skill should read from .specific/{skillName}.md to load the skill's experience
+ - after finish skill should update .specific/{skillName}.md with new experience
