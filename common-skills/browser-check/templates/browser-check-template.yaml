@@ -1,0 +1,24 @@
+# Browser Check Configuration Template
+# Copy this file to your project and customize for your URL verification needs
+
+url: "https://example.com"
+
+# Verification options - specify at least one:
+
+# Expected page title (exact match)
+title: "Example Domain"
+
+# Text content to search for within the page body
+# text: "Welcome to Example"
+
+# CSS selector for an element that must exist on the page
+# element: "h1"
+
+# Expected HTTP status code (default: 200)
+# status: 200
+
+# Optional: output file for screenshot on failure
+# screenshot-on-failure: true
+
+# Optional: timeout in milliseconds (default: 30000)
+# timeout: 30000
