@@ -75,8 +75,8 @@ Opt-in common skills add their own config; `server-deploy` creates
   (`init-flow`, `setup-workflow`, `ingest-project`, `create-relative-link`,
   `speckit-upgrade`).
 - `workflow-skills/` — `speckit-*` (specify, plan, tasks, implement, and the
-  rest of the Spec Kit flow), plus `speckit-explain`, `speckit-review-spec`
-  (readiness verdict reusing analyze + checklist), and `speckit-log`
+  rest of the Spec Kit flow), plus `speckit-discuss`, `speckit-review`
+  (readiness verdict reusing analyze + checklist, writing back to project context), and `speckit-log`
   (append-only `LOGS.md` entries). Linked into targets.
 - `common-skills/` — opt-in extras (`commit-flow`, `gen-docs`,
   `server-deploy`). `server-deploy` is config-driven: its first run surveys the

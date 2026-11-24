@@ -28,7 +28,7 @@ common-skills/           opt-in skills (commit-flow, gen-docs, server-deploy)
   server-deploy/
     references/          config schema seeds the skill writes into a target
     scripts/             survey.py, deploy.py, rollback.py, deploy_lib.py
-workflow-skills/         speckit-* (incl. speckit-review-spec, speckit-log) and speckit-explain
+workflow-skills/         speckit-* (incl. speckit-review, speckit-log) and speckit-discuss
 template/
   AGENTS.md              linked into the target
   PROJECTS.template.md   rendered into the target

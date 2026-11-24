@@ -9,6 +9,7 @@ hooks:
   before_implement: []
   before_clarify: []
   before_analyze: []
+  before_review: []
   before_checklist: []
   before_constitution: []
   before_converge: []
@@ -16,9 +17,24 @@ hooks:
   after_specify: []
   after_plan: []
   after_tasks: []
-  after_implement: []
+  # Default: run speckit-review automatically once implementation completes.
+  after_implement:
+    - extension: review
+      command: speckit.review
+      description: Review the implementation and refresh project context
+      optional: false
+      enabled: true
+      condition: ""
   after_clarify: []
-  after_analyze: []
+  # Default: run speckit-review automatically once analysis completes.
+  after_analyze:
+    - extension: review
+      command: speckit.review
+      description: Review the analysis and refresh project context
+      optional: false
+      enabled: true
+      condition: ""
+  after_review: []
   after_checklist: []
   after_constitution: []
   after_converge: []
