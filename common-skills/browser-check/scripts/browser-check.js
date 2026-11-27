@@ -198,9 +198,9 @@ async function collectInput(surveyResult) {
 // Run Playwright inline (no temp file, no shell injection risk)
 // ---------------------------------------------------------------------------
 
-function runPlaywright({ url, type, expected }) {
+function runPlaywright({ url, type, expected, headless = true }) {
   return new Promise((resolve, reject) => {
-    const cp = spawn('node', ['-e', buildCheckScript(url, type, expected)], { stdio: ['inherit', 'pipe', 'pipe'] });
+    const cp = spawn('node', ['-e', buildCheckScript(url, type, expected, headless)], { stdio: ['inherit', 'pipe', 'pipe'] });
 
     let stdout = '';
     cp.stdout.on('data', d => stdout += d);
@@ -214,10 +214,11 @@ function runPlaywright({ url, type, expected }) {
 }
 
 /** Build a safe Playwright script using JSON.stringify for all user values. */
-function buildCheckScript(url, type, expected) {
+function buildCheckScript(url, type, expected, headless = true) {
   const safeUrl = JSON.stringify(url);
   const safeType = JSON.stringify(type);
   const safeExpected = JSON.stringify(String(expected));
+  const safeHeadless = JSON.stringify(!!headless);
 
   return `(async () => {
   const { chromium } = require('playwright');
@@ -225,7 +226,7 @@ function buildCheckScript(url, type, expected) {
   const type = ${safeType};
   const expected = ${safeExpected};
 
-  const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({ headless: ${safeHeadless} });
   try {
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -266,7 +267,9 @@ async function main() {
 
   // Try loading saved flow_step
   if (taskName) {
-    const flowPath = path.join(personalDir, 'flow_steps', slug(taskName) + '.yaml');
+    const personalFlowPath = path.join(personalDir, 'flow_steps', slug(taskName) + '.yaml');
+    const publicFlowPath = path.join('.specific', 'browser-check', slug(taskName) + '.yaml');
+    const flowPath = fs.existsSync(personalFlowPath) ? personalFlowPath : publicFlowPath;
     if (fs.existsSync(flowPath)) {
       try {
         config = loadYaml(flowPath);
@@ -322,7 +325,8 @@ async function main() {
   if (!config.url) { console.error('No URL provided.'); process.exit(1); }
 
   try {
-    await runPlaywright(config);
+    const result = await runPlaywright(config);
+    console.log(result);
   } catch (err) {
     console.error(`Verification failed: ${err.message}`);
     process.exit(1);
